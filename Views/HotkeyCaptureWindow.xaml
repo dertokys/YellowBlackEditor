@@ -1,0 +1,17 @@
+﻿<Window x:Class="YellowBlackEditor.Views.HotkeyCaptureWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Запись горячей клавиши"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}">
+    <Border Margin="10" Padding="16"
+            Background="{DynamicResource PanelBrush}"
+            BorderBrush="{DynamicResource BorderBrush1}"
+            BorderThickness="1" CornerRadius="8">
+        <StackPanel>
+            <TextBlock Text="Нажмите нужную комбинацию клавиш…" Margin="0,0,0,8"/>
+            <TextBlock Text="Esc — отменить" Foreground="{DynamicResource SubTextBrush}"/>
+        </StackPanel>
+    </Border>
+</Window>
