@@ -245,6 +245,7 @@ namespace YellowBlackEditor.Models
         }
 
         public string? SharedHash { get; set; }
+        public string? LastSharedId { get; set; }
         public DateTime? SharedSyncedAt { get; set; }
 
         public string? SharedOwnerId { get => _sharedOwnerId; set { if (Set(ref _sharedOwnerId, value)) Raise(nameof(SharedText)); } }

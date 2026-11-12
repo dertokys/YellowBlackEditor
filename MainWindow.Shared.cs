@@ -12,6 +12,7 @@ namespace YellowBlackEditor
         private const string SharedGroupPath = "::shared";
         private readonly NodeViewModel _sharedGroup = new() { Name = "Общие проекты", FullPath = SharedGroupPath, Type = NodeType.SharedGroup, IsExpanded = true };
         private List<SharedProject> _shared = new();
+        private List<SharedPerson> _people = new();
         private SharedProject? _currentShared;
 
         private sealed record LocalShared(NodeViewModel Client, IList<ClientProject> List, int Index, bool InMemory)
@@ -28,6 +29,33 @@ namespace YellowBlackEditor
             SharedView.OpenMineRequested += OpenMineShared;
             SharedView.LeaveRequested += LeaveShared;
             SharedView.UnshareRequested += UnshareShared;
+            SharedView.AccessRequested += ChangeAccess;
+            SharedView.HideRequested += HideSharedProject;
+        }
+
+        private string PersonName(string id) =>
+            _people.FirstOrDefault(p => p.Id == id)?.Name is { Length: > 0 } n ? n : id;
+
+        private HashSet<string> TakenIds() => new(LocalSharedCopies().Select(x => x.Project.SharedId!));
+
+        private bool IsHiddenForMe(SharedProject sp, HashSet<string> taken) =>
+            sp.OwnerId != AppSettings.UserId && !taken.Contains(sp.Id) && _appSettings.HiddenShared.Contains(sp.Id);
+
+        private bool IsShownToMe(SharedProject sp, HashSet<string> taken) =>
+            sp.OwnerId == AppSettings.UserId || taken.Contains(sp.Id) || (sp.VisibleTo(AppSettings.UserId) && !_appSettings.HiddenShared.Contains(sp.Id));
+
+        private int HiddenSharedCount()
+        {
+            var taken = TakenIds();
+            return _shared.Count(sp => sp.VisibleTo(AppSettings.UserId) && IsHiddenForMe(sp, taken));
+        }
+
+        private void UnhideAllShared()
+        {
+            _appSettings.HiddenShared.Clear();
+            _appSettings.Save();
+            RefreshSharedGroup();
+            Status("Скрытые проекты снова видны");
         }
 
         private bool SharingAvailable(out string exchange)
@@ -47,19 +75,32 @@ namespace YellowBlackEditor
             else Status("Проект ещё не появился в общих. Нажмите «Обменяться»");
         }
 
-        private IEnumerable<LocalShared> LocalSharedCopies()
+        private IEnumerable<LocalShared> LocalProjects(Func<ClientProject, bool> match)
         {
             if (_currentClient != null && _currentClientNode != null)
                 for (var i = 0; i < _currentClient.Projects.Count; i++)
-                    if (_currentClient.Projects[i].SharedId != null)
+                    if (match(_currentClient.Projects[i]))
                         yield return new LocalShared(_currentClientNode, _currentClient.Projects, i, true);
             foreach (var (client, list) in _clientProjects.ToList())
             {
                 if (ReferenceEquals(client, _currentClientNode)) continue;
                 for (var i = 0; i < list.Count; i++)
-                    if (list[i].SharedId != null)
+                    if (match(list[i]))
                         yield return new LocalShared(client, list, i, false);
             }
+        }
+
+        private IEnumerable<LocalShared> LocalSharedCopies() => LocalProjects(p => p.SharedId != null);
+
+        private LocalShared? FindUnlinkedCopy(string id) => LocalProjects(p => p.SharedId == null && p.LastSharedId == id).FirstOrDefault();
+
+        private static void Unlink(ClientProject p, string note)
+        {
+            p.LastSharedId ??= p.SharedId;
+            p.SharedNote = note;
+            p.SharedId = null;
+            p.SharedHash = null;
+            p.SharedSyncedAt = null;
         }
 
         private LocalShared? FindLocalCopy(string id) => LocalSharedCopies().FirstOrDefault(x => x.Project.SharedId == id);
@@ -101,12 +142,9 @@ namespace YellowBlackEditor
                 var p = local.Project;
                 if (!byId.TryGetValue(p.SharedId!, out var sp))
                 {
-                    p.SharedNote = p.SharedOwnerId == me
+                    Unlink(p, p.SharedOwnerId == me
                         ? "Вы убрали проект из общих"
-                        : $"Проект убран из общих (вёл {p.SharedOwnerName}). У вас осталась своя копия";
-                    p.SharedId = null;
-                    p.SharedHash = null;
-                    p.SharedSyncedAt = null;
+                        : $"Проект убран из общих (вёл {p.SharedOwnerName}). У вас осталась своя копия");
                     touched.Add(local);
                     continue;
                 }
@@ -163,8 +201,9 @@ namespace YellowBlackEditor
         private void RefreshSharedGroup()
         {
             var me = AppSettings.UserId;
-            var taken = new HashSet<string>(LocalSharedCopies().Select(x => x.Project.SharedId!));
+            var taken = TakenIds();
             var ordered = _shared
+                .Where(p => IsShownToMe(p, taken))
                 .OrderBy(p => p.IsClosed)
                 .ThenByDescending(p => p.UpdatedAt)
                 .ToList();
@@ -176,6 +215,8 @@ namespace YellowBlackEditor
                 parts.Add(p.OwnerId == me ? "ведёте вы" : "ведёт " + p.OwnerName);
                 if (p.IsClosed) parts.Add("готово");
                 else if (p.OwnerId != me && taken.Contains(p.Id)) parts.Add("у вас");
+                else if (p.OwnerId != me && p.Invited.Contains(me) && !p.IsMember(me)) parts.Add("вас пригласили");
+                if (p.OwnerId == me && !p.ForEveryone) parts.Add("видят " + p.Invited.Count + " чел.");
                 return string.Join(" · ", parts);
             }
 
@@ -207,7 +248,7 @@ namespace YellowBlackEditor
                     SelectNode(again);
             }
 
-            var show = ordered.Count > 0 && _appSettings.SyncEnabled;
+            var show = (ordered.Count > 0 || HiddenSharedCount() > 0) && _appSettings.SyncEnabled;
             var present = RootNodes.Contains(_sharedGroup);
             if (show && !present)
             {
@@ -247,7 +288,7 @@ namespace YellowBlackEditor
             FormatBar.IsEnabled = false;
             RenameBtn.Visibility = Visibility.Collapsed;
             SharedView.Visibility = Visibility.Visible;
-            SharedView.Show(sp, FindLocalCopy(sp.Id) != null);
+            SharedView.Show(sp, FindLocalCopy(sp.Id) != null, _people);
             CurrentKindText.Text = "Общий проект";
             CurrentFileText.Text = sp.DisplayName;
             DirtyText.Text = "";
@@ -264,9 +305,14 @@ namespace YellowBlackEditor
         {
             if (!SharingAvailable(out var exchange) || _currentClientNode == null || _currentClient == null) return;
             var name = _appSettings.DisplayName;
+            var me = AppSettings.UserId;
+            var invited = AccessWindow.Ask(this, string.IsNullOrWhiteSpace(p.Name) ? "без названия" : p.Name.Trim(), _people, null, true);
+            if (invited == null) return;
+            var reuseId = p.LastSharedId != null && p.SharedOwnerId == me && _shared.All(x => x.Id != p.LastSharedId) ? p.LastSharedId : null;
             var sp = new SharedProject
             {
-                Id = Guid.NewGuid().ToString("N"),
+                Id = reuseId ?? Guid.NewGuid().ToString("N"),
+                Invited = invited,
                 ClientName = _currentClientNode.Name,
                 ClientPath = Path.GetRelativePath(ClientsRoot, _currentClientNode.FullPath),
                 ClientInn = _currentClient.Inn,
@@ -290,11 +336,14 @@ namespace YellowBlackEditor
             p.SharedHash = SharedProjects.Hash(sp);
             p.SharedSyncedAt = sp.UpdatedAt;
             SharedProjects.ApplyInfo(sp, p);
+            p.LastSharedId = sp.Id;
             p.SharedId = sp.Id;
             _shared.Add(sp);
             RefreshProjectsGroup();
             RefreshSharedGroup();
-            Status("Проект в общих. Коллеги увидят его в разделе «Общие проекты»");
+            Status(invited.Count == 0
+                ? "Проект в общих. Коллеги увидят его в разделе «Общие проекты»"
+                : "Проект виден только приглашённым: " + string.Join(", ", invited.Select(PersonName)));
         }
 
         private NodeViewModel? FindOrCreateClientFor(SharedProject sp)
@@ -338,6 +387,11 @@ namespace YellowBlackEditor
                 OpenMineShared();
                 return;
             }
+            if (FindUnlinkedCopy(sp.Id) is { } old)
+            {
+                RelinkCopy(sp, old, exchange);
+                return;
+            }
             var client = FindOrCreateClientFor(sp);
             if (client == null) return;
 
@@ -357,6 +411,7 @@ namespace YellowBlackEditor
             p.SharedHash = SharedProjects.Hash(sp);
             p.SharedSyncedAt = sp.UpdatedAt;
             SharedProjects.ApplyInfo(sp, p);
+            p.LastSharedId = sp.Id;
             p.SharedId = sp.Id;
 
             int index;
@@ -385,6 +440,88 @@ namespace YellowBlackEditor
             RefreshSharedGroup();
             Status($"Проект у вас в карточке «{client.Name}». Правки увидят все участники");
             GoToProject(client, index);
+        }
+
+        private void RelinkCopy(SharedProject sp, LocalShared old, string exchange)
+        {
+            SharedProjects.EnsureMember(sp, _appSettings);
+            try
+            {
+                SharedProjects.Save(exchange, sp);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Не удалось забрать проект", ex, $"Проверьте, что папка обмена доступна: {exchange}");
+                return;
+            }
+            var p = old.Project;
+            var kept = false;
+            if (SharedProjects.Hash(p) != SharedProjects.Hash(sp))
+            {
+                old.List.Insert(old.Index + 1, SharedProjects.CloneAsSeparate(p, " (ваша прежняя версия)"));
+                kept = true;
+            }
+            SharedProjects.CopyContent(sp, p);
+            p.SharedHash = SharedProjects.Hash(sp);
+            p.SharedSyncedAt = sp.UpdatedAt;
+            SharedProjects.ApplyInfo(sp, p);
+            p.LastSharedId = sp.Id;
+            p.SharedId = sp.Id;
+            SaveLocalCopies(new[] { old });
+            if (!old.InMemory) _clientProjects[old.Client] = old.List.ToList();
+            RefreshProjectsGroup();
+            RefreshSharedGroup();
+            Status(kept
+                ? "Проект снова общий. Вашу прежнюю версию сохранил рядом отдельным проектом"
+                : "Проект снова общий, ваша копия привязана обратно");
+            GoToProject(old.Client, old.Index);
+        }
+
+        private void ChangeAccess()
+        {
+            if (_currentShared is not { } sp || !SharingAvailable(out var exchange) || sp.OwnerId != AppSettings.UserId) return;
+            var invited = AccessWindow.Ask(this, sp.DisplayName, _people, sp.Invited, false);
+            if (invited == null) return;
+            sp.Invited = invited;
+            try
+            {
+                SharedProjects.Save(exchange, sp);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Не удалось изменить доступ", ex, $"Проверьте, что папка обмена доступна: {exchange}");
+                return;
+            }
+            RefreshSharedGroup();
+            Status(invited.Count == 0 ? "Проект виден всем коллегам" : "Проект виден только: " + string.Join(", ", invited.Select(PersonName)));
+        }
+
+        private void HideSharedProject()
+        {
+            if (_currentShared is not { } sp) return;
+            var me = AppSettings.UserId;
+            var invitedMe = sp.Invited.Contains(me);
+            if (!ThemedMessageBox.Confirm(this,
+                    invitedMe ? $"Отказаться от «{sp.DisplayName}»?" : $"Скрыть «{sp.DisplayName}»?",
+                    invitedMe
+                        ? $"{sp.OwnerName} увидит, что вы отказались. Проект пропадёт из вашего списка."
+                        : "Проект пропадёт из вашего списка общих. Вернуть его можно в разделе «Общие проекты».",
+                    invitedMe ? "Отказаться" : "Скрыть"))
+                return;
+            if (invitedMe && SharingAvailable(out var exchange))
+            {
+                sp.Invited.Remove(me);
+                if (sp.Invited.Count == 0) sp.Invited.Add(sp.OwnerId);
+                try { SharedProjects.Save(exchange, sp); }
+                catch (Exception ex) { LogError("Не удалось отказаться от проекта " + sp.Id, ex); }
+            }
+            if (!_appSettings.HiddenShared.Contains(sp.Id)) _appSettings.HiddenShared.Add(sp.Id);
+            _appSettings.Save();
+            HideShared();
+            RefreshSharedGroup();
+            if (RootNodes.Contains(_sharedGroup)) SelectNode(_sharedGroup);
+            else ShowEmpty(null);
+            Status(invitedMe ? "Вы отказались от проекта" : "Проект скрыт");
         }
 
         private void GoToProject(NodeViewModel client, int index)
@@ -420,8 +557,7 @@ namespace YellowBlackEditor
             }
             if (FindLocalCopy(sp.Id) is { } local)
             {
-                local.Project.SharedId = null;
-                local.Project.SharedNote = "Вы перестали участвовать. Это ваша копия, она больше не обновляется";
+                Unlink(local.Project, "Вы перестали участвовать. Это ваша копия, она больше не обновляется");
                 SaveLocalCopies(new[] { local });
             }
             RefreshProjectsGroup();
@@ -447,8 +583,7 @@ namespace YellowBlackEditor
             }
             if (FindLocalCopy(sp.Id) is { } local)
             {
-                local.Project.SharedId = null;
-                local.Project.SharedNote = "Вы убрали проект из общих";
+                Unlink(local.Project, "Вы убрали проект из общих. Если поделитесь снова, у коллег привяжутся их прежние копии");
                 SaveLocalCopies(new[] { local });
             }
             _shared.RemoveAll(p => p.Id == sp.Id);

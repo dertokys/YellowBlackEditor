@@ -11,6 +11,68 @@ namespace YellowBlackEditor.Utils
     {
         public const string FolderName = "Общие проекты";
         private const string TrashName = "_Удалённые";
+        private const string PeopleName = "_люди";
+
+        private static string PersonFile(string exchange, string id)
+        {
+            var safe = string.Concat(id.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            return Path.Combine(Root(exchange), PeopleName, safe + ".json");
+        }
+
+        public static List<SharedPerson> LoadPeople(string exchange)
+        {
+            var dir = Path.Combine(Root(exchange), PeopleName);
+            var list = new List<SharedPerson>();
+            if (!Directory.Exists(dir)) return list;
+            foreach (var file in Directory.GetFiles(dir, "*.json"))
+            {
+                try
+                {
+                    var p = JsonSerializer.Deserialize<SharedPerson>(File.ReadAllText(file), Options);
+                    if (p != null && p.Id.Length > 0) list.Add(p);
+                }
+                catch { }
+            }
+            return list;
+        }
+
+        public static void TouchPerson(string exchange, string name)
+        {
+            var path = PersonFile(exchange, AppSettings.UserId);
+            try
+            {
+                if (File.Exists(path))
+                {
+                    var old = JsonSerializer.Deserialize<SharedPerson>(File.ReadAllText(path), Options);
+                    if (old != null && old.Name == name && DateTime.UtcNow - old.LastSeen < TimeSpan.FromHours(12)) return;
+                }
+            }
+            catch { }
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var me = new SharedPerson { Id = AppSettings.UserId, Name = name, Machine = AppSettings.MachineName, LastSeen = DateTime.UtcNow };
+            var tmp = path + "." + Environment.MachineName + ".tmp";
+            File.WriteAllText(tmp, JsonSerializer.Serialize(me, Options), new UTF8Encoding(false));
+            File.Move(tmp, path, true);
+        }
+
+        public static ClientProject CloneAsSeparate(ClientProject p, string suffix)
+        {
+            ProjectTask Fresh(ProjectTask t)
+            {
+                var c = new ProjectTask { Title = t.Title, Done = t.Done };
+                foreach (var ch in t.Children) c.Children.Add(Fresh(ch));
+                return c;
+            }
+            var copy = new ClientProject
+            {
+                Name = (string.IsNullOrWhiteSpace(p.Name) ? "Проект" : p.Name.Trim()) + suffix,
+                Status = p.Status,
+                Deadline = p.Deadline,
+                Comment = p.Comment
+            };
+            foreach (var t in p.Tasks) copy.Tasks.Add(Fresh(t));
+            return copy;
+        }
 
         private static readonly JsonSerializerOptions Options = new()
         {

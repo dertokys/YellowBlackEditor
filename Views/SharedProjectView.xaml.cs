@@ -21,6 +21,8 @@ namespace YellowBlackEditor.Views
         public event Action? OpenMineRequested;
         public event Action? LeaveRequested;
         public event Action? UnshareRequested;
+        public event Action? AccessRequested;
+        public event Action? HideRequested;
 
         public SharedProject? Project { get; private set; }
 
@@ -29,8 +31,9 @@ namespace YellowBlackEditor.Views
             InitializeComponent();
         }
 
-        public void Show(SharedProject p, bool takenByMe)
+        public void Show(SharedProject p, bool takenByMe, IReadOnlyList<SharedPerson> people)
         {
+            string NameOf(string id) => people.FirstOrDefault(x => x.Id == id)?.Name is { Length: > 0 } n ? n : p.MemberName(id);
             Project = p;
             var me = AppSettings.UserId;
             var isOwner = p.OwnerId == me;
@@ -50,7 +53,7 @@ namespace YellowBlackEditor.Views
             var members = p.Members.OrderBy(m => m.Id == p.OwnerId ? 0 : 1).ThenBy(m => m.JoinedAt).ToList();
             if (!members.Any(m => m.Id == p.OwnerId))
                 members.Insert(0, new SharedMember { Id = p.OwnerId, Name = p.OwnerName });
-            MembersList.ItemsSource = members.Select(m =>
+            var chips = members.Select(m =>
             {
                 var role = m.Id == p.OwnerId ? "ведёт проект" : "участвует";
                 if (m.Id == me) role += " · это вы";
@@ -59,6 +62,16 @@ namespace YellowBlackEditor.Views
                 var tip = string.IsNullOrWhiteSpace(m.Machine) ? name : $"{name}, компьютер {m.Machine}";
                 return new MemberItem(name, name.Substring(0, 1).ToUpper(), role, tip, AvatarFor(m.Id));
             }).ToList();
+            foreach (var id in p.Invited.Where(id => id != p.OwnerId && !p.IsMember(id)))
+            {
+                var name = NameOf(id);
+                chips.Add(new MemberItem(name, name.Substring(0, 1).ToUpper(), id == me ? "приглашены вы, ещё не забрали" : "приглашён, ещё не забрал",
+                    name, AvatarFor(id)));
+            }
+            MembersList.ItemsSource = chips;
+            AccessText.Text = p.ForEveryone
+                ? "Видят все коллеги с обменом через эту папку"
+                : "Видят только: " + string.Join(", ", new[] { p.OwnerId }.Concat(p.Invited).Concat(p.Members.Select(m => m.Id)).Distinct().Select(id => id == me ? "вы" : NameOf(id)));
 
             var spent = p.Members.Sum(m => m.Minutes);
             var updated = p.UpdatedAt == default
@@ -70,6 +83,13 @@ namespace YellowBlackEditor.Views
             OpenMineBtn.Visibility = takenByMe ? Visibility.Visible : Visibility.Collapsed;
             LeaveBtn.Visibility = isMember && !isOwner ? Visibility.Visible : Visibility.Collapsed;
             UnshareBtn.Visibility = isOwner ? Visibility.Visible : Visibility.Collapsed;
+            AccessBtn.Visibility = isOwner ? Visibility.Visible : Visibility.Collapsed;
+            var canHide = !isOwner && !takenByMe;
+            HideBtn.Visibility = canHide ? Visibility.Visible : Visibility.Collapsed;
+            HideBtn.Content = p.Invited.Contains(me) ? "Отказаться" : "Не участвовать, скрыть";
+            HideBtn.ToolTip = p.Invited.Contains(me)
+                ? "Отказаться от приглашения: проект пропадёт из вашего списка"
+                : "Проект пропадёт из вашего списка общих. Вернуть можно в разделе «Общие проекты»";
             HintText.Text = takenByMe
                 ? "Проект у вас в карточке клиента. Правьте его там: изменения увидят все участники при следующем обмене."
                 : "Здесь только просмотр. Заберите проект к себе, чтобы вести его вместе со всеми.";
@@ -112,5 +132,7 @@ namespace YellowBlackEditor.Views
         private void OpenMine_Click(object sender, RoutedEventArgs e) => OpenMineRequested?.Invoke();
         private void Leave_Click(object sender, RoutedEventArgs e) => LeaveRequested?.Invoke();
         private void Unshare_Click(object sender, RoutedEventArgs e) => UnshareRequested?.Invoke();
+        private void Access_Click(object sender, RoutedEventArgs e) => AccessRequested?.Invoke();
+        private void Hide_Click(object sender, RoutedEventArgs e) => HideRequested?.Invoke();
     }
 }

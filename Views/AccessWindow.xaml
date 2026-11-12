@@ -1,0 +1,54 @@
+<Window x:Class="YellowBlackEditor.Views.AccessWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Кому показать проект"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" Width="520" SizeToContent="Height" ShowInTaskbar="False"
+        Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}">
+    <Border Padding="22,18">
+        <StackPanel>
+            <TextBlock x:Name="TitleText" Text="Кому показать проект?" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="ProjectText" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,16" TextTrimming="CharacterEllipsis"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <ToggleButton x:Name="AllBtn" Style="{DynamicResource AccentToggle}" Height="36" Width="170" Margin="0,0,8,0" Content="Всем коллегам" Click="All_Click"/>
+                <ToggleButton x:Name="PickBtn" Style="{DynamicResource AccentToggle}" Height="36" Width="170" Margin="0" Content="Только выбранным" Click="Pick_Click"/>
+            </StackPanel>
+
+            <TextBlock x:Name="AllHint" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap"
+                       Text="Проект увидят все, у кого настроен обмен через ту же папку."/>
+
+            <StackPanel x:Name="PickPanel" Visibility="Collapsed">
+                <TextBlock Text="Отметьте, кого пригласить" Style="{DynamicResource FieldLabel}"/>
+                <Border BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1" CornerRadius="6" Padding="8,6" MaxHeight="300">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="PeopleList" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Style="{DynamicResource SettingCheck}" IsChecked="{Binding Selected}" Margin="0,4">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding Sub}" Foreground="{DynamicResource SubTextBrush}" FontSize="12"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+                <TextBlock x:Name="NobodyText" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"
+                           Text="Пока в списке никого нет. Коллеги появятся здесь, когда запустят Yellow Black Notes 1.5.2 или новее с обменом через ту же папку."/>
+                <TextBlock Foreground="{DynamicResource SubTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="Остальные проект не увидят. Пригласить ещё людей можно позже кнопкой «Кому видно»."/>
+            </StackPanel>
+
+            <Grid Margin="0,18,0,0">
+                <TextBlock x:Name="ErrorText" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,220,0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="OkBtn" Style="{DynamicResource AccentButton}" Height="38" Content="Поделиться" Click="Ok_Click" IsDefault="True"/>
+                    <Button Style="{DynamicResource SecondaryButton}" Height="38" Margin="8,0,0,0" Content="Отмена" IsCancel="True"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

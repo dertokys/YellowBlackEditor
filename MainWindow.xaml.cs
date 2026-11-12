@@ -604,13 +604,21 @@ namespace YellowBlackEditor
                     EmptyStateText.Text = count == 0
                         ? "В разделе пока пусто. Создайте первую заметку."
                         : "Выберите заметку слева или создайте новую.";
+                    EmptyStateButton.Content = "Создать заметку";
                     EmptyStateButton.Visibility = Visibility.Visible;
                     break;
                 case NodeType.ProjectGroup:
                     EmptyStateText.Text = "Здесь открытые проекты всех клиентов. Нажмите на проект, чтобы открыть его в карточке клиента.";
                     break;
                 case NodeType.SharedGroup:
-                    EmptyStateText.Text = "Проекты, которыми поделились вы и коллеги. Нажмите на проект, чтобы посмотреть, кто над ним работает и как идут дела.";
+                    var hidden = HiddenSharedCount();
+                    EmptyStateText.Text = "Проекты, которыми поделились вы и коллеги. Нажмите на проект, чтобы посмотреть, кто над ним работает и как идут дела." +
+                                          (hidden > 0 ? $"\n\nСкрытых проектов: {hidden}." : "");
+                    if (hidden > 0)
+                    {
+                        EmptyStateButton.Content = "Показать скрытые";
+                        EmptyStateButton.Visibility = Visibility.Visible;
+                    }
                     break;
                 case NodeType.Attachment:
                     EmptyState.Visibility = Visibility.Collapsed;
@@ -656,6 +664,12 @@ namespace YellowBlackEditor
 
         private void EmptyStateButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_emptyStateNode?.Type == NodeType.SharedGroup)
+            {
+                UnhideAllShared();
+                ShowEmpty(_emptyStateNode);
+                return;
+            }
             if (_emptyStateNode != null) AddDocumentUnder(_emptyStateNode);
         }
 

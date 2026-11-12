@@ -317,14 +317,29 @@ namespace YellowBlackEditor
             var me = AppSettings.UserId;
             var taken = new HashSet<string>(LocalSharedCopies().Select(x => x.Project.SharedId!));
             var messages = new List<(string Id, string Text)>();
+            var hiddenChanged = false;
             foreach (var sp in remote)
             {
-                if (_sharedSeenReady)
+                var invitedNow = sp.Invited.Contains(me) && sp.OwnerId != me && !sp.IsMember(me);
+                var client = sp.ClientName.Length > 0 ? $" ({sp.ClientName})" : "";
+                if (invitedNow && !_appSettings.SeenInvites.Contains(sp.Id))
+                {
+                    _appSettings.SeenInvites.Add(sp.Id);
+                    _appSettings.HiddenShared.Remove(sp.Id);
+                    hiddenChanged = true;
+                    messages.Add((sp.Id, $"{sp.OwnerName} приглашает вас в проект «{sp.DisplayName}»{client}"));
+                }
+                else if (!sp.Invited.Contains(me) && _appSettings.SeenInvites.Remove(sp.Id))
+                {
+                    hiddenChanged = true;
+                }
+                else if (_sharedSeenReady)
                 {
                     var who = string.IsNullOrWhiteSpace(sp.UpdatedByName) ? sp.MemberName(sp.UpdatedById) : sp.UpdatedByName;
                     if (!_sharedSeen.TryGetValue(sp.Id, out var seen))
                     {
-                        if (sp.OwnerId != me) messages.Add((sp.Id, $"{sp.OwnerName} поделился проектом «{sp.DisplayName}»" + (sp.ClientName.Length > 0 ? $" ({sp.ClientName})" : "")));
+                        if (sp.OwnerId != me && sp.ForEveryone && !_appSettings.HiddenShared.Contains(sp.Id))
+                            messages.Add((sp.Id, $"{sp.OwnerName} поделился проектом «{sp.DisplayName}»{client}"));
                     }
                     else if (seen != sp.UpdatedAt && sp.UpdatedById != me && (taken.Contains(sp.Id) || sp.OwnerId == me))
                     {
@@ -334,6 +349,7 @@ namespace YellowBlackEditor
                 _sharedSeen[sp.Id] = sp.UpdatedAt;
             }
             _sharedSeenReady = true;
+            if (hiddenChanged) _appSettings.Save();
             if (messages.Count == 0) return;
 
             var title = messages.Count == 1 ? "Общие проекты" : $"Общие проекты: изменений {messages.Count}";

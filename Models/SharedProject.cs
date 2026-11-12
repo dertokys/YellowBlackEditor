@@ -12,6 +12,14 @@ namespace YellowBlackEditor.Models
         public int Minutes { get; set; }
     }
 
+    public class SharedPerson
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Machine { get; set; } = "";
+        public DateTime LastSeen { get; set; }
+    }
+
     public class SharedProject
     {
         public string Id { get; set; } = "";
@@ -32,6 +40,14 @@ namespace YellowBlackEditor.Models
         public string UpdatedById { get; set; } = "";
         public string UpdatedByName { get; set; } = "";
         public List<SharedMember> Members { get; set; } = new();
+        public List<string> Invited { get; set; } = new();
+
+        [JsonIgnore]
+        public bool ForEveryone => Invited.Count == 0;
+
+        public bool IsMember(string id) => Members.Any(m => m.Id == id);
+
+        public bool VisibleTo(string id) => ForEveryone || OwnerId == id || Invited.Contains(id) || IsMember(id);
 
         [JsonIgnore]
         public bool IsClosed => Status == "Готово";
