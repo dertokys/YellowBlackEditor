@@ -36,6 +36,9 @@ namespace YellowBlackEditor.Views
             TrayCheck.IsChecked = _appSettings.MinimizeToTray;
             SyncCheck.IsChecked = _appSettings.SyncEnabled;
             SyncFolderBox.Text = _appSettings.SyncFolder;
+            UserNameBox.Text = _appSettings.DisplayName;
+            UserNameBox.Tag = AppSettings.DefaultUserName;
+            UserIdText.Text = $"Так вас видят коллеги: кто ведёт проект и кто в нём участвует. Компьютер {AppSettings.MachineName}, пользователь Windows {AppSettings.DefaultUserName}.";
             try { AutostartCheck.IsChecked = AppSettings.StartsWithWindows; } catch { AutostartCheck.IsEnabled = false; }
 
             _light = ThemeManager.Current.IsLight;
@@ -242,6 +245,8 @@ namespace YellowBlackEditor.Views
 
                 _appSettings.MinimizeToTray = TrayCheck.IsChecked == true;
                 _appSettings.SyncFolder = SyncFolderBox.Text.Trim();
+                var userName = UserNameBox.Text.Trim();
+                _appSettings.UserName = userName == AppSettings.DefaultUserName ? "" : userName;
                 _appSettings.SyncEnabled = SyncCheck.IsChecked == true && _appSettings.SyncFolder.Length > 0;
                 _appSettings.Save();
                 if (AutostartCheck.IsEnabled && AppSettings.StartsWithWindows != (AutostartCheck.IsChecked == true))

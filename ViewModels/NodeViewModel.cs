@@ -16,10 +16,11 @@ namespace YellowBlackEditor.ViewModels
 
         public string Name { get => _name; set { _name = value; OnPropertyChanged(); } }
         public string FullPath { get; set; } = "";
-        public string Hint { get; set; } = "";
+        private string _hint = "";
+        public string Hint { get => _hint; set { if (_hint == value) return; _hint = value; OnPropertyChanged(); } }
         public NodeViewModel? Target { get; set; }
         public int ProjectIndex { get; set; }
-        public bool IsVirtual => Type is NodeType.ProjectGroup or NodeType.Project;
+        public bool IsVirtual => Type is NodeType.ProjectGroup or NodeType.Project or NodeType.SharedGroup or NodeType.SharedProject;
         public NodeType Type { get; set; }
         public NodeViewModel? Parent { get; set; }
         public ObservableCollection<NodeViewModel> Children { get; } = new();
@@ -37,6 +38,8 @@ namespace YellowBlackEditor.ViewModels
             NodeType.Client => "",
             NodeType.ProjectGroup => "",
             NodeType.Project => "",
+            NodeType.SharedGroup => "\uE716",
+            NodeType.SharedProject => "\uE72D",
             _ => ""
         };
 

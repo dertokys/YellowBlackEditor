@@ -227,6 +227,47 @@ namespace YellowBlackEditor.Models
 
         private bool _isExpanded = true;
         private bool _expandInitialized;
+        private string? _sharedId;
+        private string? _sharedOwnerId;
+        private string? _sharedOwnerName;
+        private string? _sharedMembers;
+        private string? _sharedNote;
+
+        public string? SharedId
+        {
+            get => _sharedId;
+            set
+            {
+                if (!Set(ref _sharedId, value)) return;
+                Raise(nameof(IsShared));
+                Raise(nameof(SharedText));
+            }
+        }
+
+        public string? SharedHash { get; set; }
+        public DateTime? SharedSyncedAt { get; set; }
+
+        public string? SharedOwnerId { get => _sharedOwnerId; set { if (Set(ref _sharedOwnerId, value)) Raise(nameof(SharedText)); } }
+        public string? SharedOwnerName { get => _sharedOwnerName; set { if (Set(ref _sharedOwnerName, value)) Raise(nameof(SharedText)); } }
+        public string? SharedMembers { get => _sharedMembers; set { if (Set(ref _sharedMembers, value)) Raise(nameof(SharedText)); } }
+        public string? SharedNote { get => _sharedNote; set { if (Set(ref _sharedNote, value)) Raise(nameof(SharedText)); } }
+
+        [JsonIgnore]
+        public bool IsShared => !string.IsNullOrEmpty(_sharedId);
+
+        [JsonIgnore]
+        public string SharedText
+        {
+            get
+            {
+                if (!IsShared) return _sharedNote ?? "";
+                var text = _sharedOwnerId == YellowBlackEditor.Utils.AppSettings.UserId
+                    ? "Общий проект · ведёте вы"
+                    : "Общий проект · ведёт " + (_sharedOwnerName ?? "");
+                if (!string.IsNullOrWhiteSpace(_sharedMembers)) text += " · участвуют: " + _sharedMembers;
+                return text;
+            }
+        }
 
         public string Name { get => _name; set => Set(ref _name, value); }
         public string Comment { get => _comment; set => Set(ref _comment, value); }

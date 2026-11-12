@@ -72,6 +72,8 @@ namespace YellowBlackEditor
             else
             {
                 _syncTimer?.Stop();
+                _shared.Clear();
+                RefreshSharedGroup();
             }
         }
 
@@ -104,8 +106,16 @@ namespace YellowBlackEditor
             SyncNowText.Text = "Обмен…";
             SyncNowBtn.IsEnabled = false;
             var sync = new FolderSync(ClientsRoot, _appSettings.SyncFolder, _appConfigDir);
+            var exchange = _appSettings.SyncFolder;
 
-            Task.Run(sync.Run).ContinueWith(t => Dispatcher.BeginInvoke(() =>
+            Task.Run(() =>
+            {
+                var result = sync.Run();
+                List<SharedProject>? shared = null;
+                try { shared = SharedProjects.LoadAll(exchange); }
+                catch (Exception ex) { LogError("Общие проекты", ex); }
+                return (result, shared);
+            }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
                 _syncRunning = false;
                 SyncNowText.Text = "Обменяться";
@@ -121,7 +131,7 @@ namespace YellowBlackEditor
                         Status(unavailable ? $"Папка обмена недоступна: {_appSettings.SyncFolder}" : "Обмен не удался: " + ex.Message);
                     return;
                 }
-                var r = t.Result;
+                var (r, shared) = t.Result;
                 SyncText.Text = "Обмен: " + DateTime.Now.ToString("HH:mm");
                 SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
                 if (r.Conflicts > 0)
@@ -133,6 +143,7 @@ namespace YellowBlackEditor
                 else if (r.Downloaded > 0)
                     Status($"Обмен: получено изменений — {r.Downloaded}");
                 ApplySyncChanges(r);
+                if (shared != null && exchange == _appSettings.SyncFolder) ApplyShared(shared, exchange);
             }));
         }
 

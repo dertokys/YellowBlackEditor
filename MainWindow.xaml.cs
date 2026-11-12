@@ -103,6 +103,7 @@ namespace YellowBlackEditor
             ClientView.StatusMessage += Status;
             ClientView.AddNoteRequested += () => { if (_currentClientNode != null) AddDocumentUnder(_currentClientNode); };
             ClientView.OpenNoteRequested += n => SelectNode(n);
+            InitShared();
 
             _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); SaveAll(); };
@@ -337,6 +338,7 @@ namespace YellowBlackEditor
         {
             RootNodes.Clear();
             _projectsGroup.IsSelected = false;
+            _sharedGroup.IsSelected = false;
             _contentCache.Clear();
             if (!Directory.Exists(_workspacePath)) return;
 
@@ -349,6 +351,7 @@ namespace YellowBlackEditor
                 RootNodes.Add(sectionNode);
             }
             LoadClientProjects();
+            RefreshSharedGroup();
             WarmSearchCache();
         }
 
@@ -547,11 +550,13 @@ namespace YellowBlackEditor
             _currentDocNode = null;
             _currentClientNode = null;
             DetachCurrentClient();
+            HideShared();
             _isDirty = false;
             _clientDirty = false;
 
             if (node?.Type == NodeType.Document) LoadDocument(node);
             else if (node?.Type == NodeType.Client) LoadClient(node);
+            else if (node?.Type == NodeType.SharedProject) ShowShared(node);
             else ShowEmpty(node);
 
             UpdateTitle();
@@ -591,6 +596,9 @@ namespace YellowBlackEditor
                     break;
                 case NodeType.ProjectGroup:
                     EmptyStateText.Text = "Здесь открытые проекты всех клиентов. Нажмите на проект, чтобы открыть его в карточке клиента.";
+                    break;
+                case NodeType.SharedGroup:
+                    EmptyStateText.Text = "Проекты, которыми поделились вы и коллеги. Нажмите на проект, чтобы посмотреть, кто над ним работает и как идут дела.";
                     break;
                 case NodeType.Attachment:
                     EmptyState.Visibility = Visibility.Collapsed;
@@ -877,6 +885,7 @@ namespace YellowBlackEditor
                 ClientStore.Save(_currentClientNode.FullPath, _currentClient);
                 _clientDirty = false;
                 UpdateClientProjects(_currentClientNode, _currentClient.Projects);
+                if (_currentClient.Projects.Any(p => p.SharedId != null && SharedProjects.Hash(p) != p.SharedHash)) SyncSoon();
                 _contentCache.Remove(_currentClientNode.FullPath);
                 MarkSaved();
                 if (_reminderTimer != null) UpdateBell(CollectReminders());
@@ -1582,6 +1591,7 @@ namespace YellowBlackEditor
             if (q.Length == 0)
             {
                 _projectsGroup.IsExpanded = true;
+                _sharedGroup.IsExpanded = true;
                 if (Tree.SelectedItem is NodeViewModel sel) ExpandParents(sel);
                 return;
             }
@@ -1608,7 +1618,7 @@ namespace YellowBlackEditor
                 return true;
             }
 
-            var selfHit = Contains(node.Name, q) || (node.Type == NodeType.Project && Contains(node.Hint, q)) ||
+            var selfHit = Contains(node.Name, q) || (node.Type is NodeType.Project or NodeType.SharedProject && Contains(node.Hint, q)) ||
                           (node.Type is NodeType.Document or NodeType.Client && NodeContentContains(node, q));
             node.IsVisible = selfHit || childHit;
             node.IsHit = selfHit;
@@ -1713,7 +1723,11 @@ namespace YellowBlackEditor
             }
 
             var present = RootNodes.Contains(_projectsGroup);
-            if (items.Count > 0 && !present) RootNodes.Insert(0, _projectsGroup);
+            if (items.Count > 0 && !present)
+            {
+                _projectsGroup.IsSelected = false;
+                RootNodes.Insert(0, _projectsGroup);
+            }
             else if (items.Count == 0 && present) RootNodes.Remove(_projectsGroup);
 
             var q = SearchBox.Text.Trim();
@@ -1727,7 +1741,7 @@ namespace YellowBlackEditor
                 when = d.Date < DateTime.Today ? "срок был " + DateText.HumanDate(d) : "до " + DateText.HumanDate(d);
             else
                 when = p.Status.ToLower();
-            return client.Name + " · " + when;
+            return client.Name + " · " + when + (p.IsShared ? " · общий" : "");
         }
 
         private void OpenProject(NodeViewModel node)

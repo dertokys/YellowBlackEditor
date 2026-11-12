@@ -20,6 +20,9 @@ namespace YellowBlackEditor.Views
         public event Action<string>? StatusMessage;
         public event Action? AddNoteRequested;
         public event Action<NodeViewModel>? OpenNoteRequested;
+        public event Action<ClientProject>? ShareProjectRequested;
+        public event Action<ClientProject>? OpenSharedRequested;
+        public event Action<ClientProject>? ProjectRemoved;
 
         private NodeViewModel? _node;
         private ClientCard? _card;
@@ -156,6 +159,16 @@ namespace YellowBlackEditor.Views
             {
                 return "";
             }
+        }
+
+        private void ShareProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientProject>(sender) is { } p) ShareProjectRequested?.Invoke(p);
+        }
+
+        private void OpenSharedProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientProject>(sender) is { } p) OpenSharedRequested?.Invoke(p);
         }
 
         public void ShowProject(int index)
@@ -423,8 +436,12 @@ namespace YellowBlackEditor.Views
         {
             if (Ctx<ClientProject>(sender) is not { } p) return;
             var empty = string.IsNullOrWhiteSpace(p.Name) && string.IsNullOrWhiteSpace(p.Comment) && p.Tasks.Count == 0;
-            if (empty || ConfirmDelete($"Удалить проект «{(string.IsNullOrWhiteSpace(p.Name) ? "без названия" : p.Name)}»?", "Этапы проекта тоже удалятся."))
+            var message = p.IsShared ? "Этапы проекта тоже удалятся. Общий проект у коллег останется." : "Этапы проекта тоже удалятся.";
+            if (empty || ConfirmDelete($"Удалить проект «{(string.IsNullOrWhiteSpace(p.Name) ? "без названия" : p.Name)}»?", message))
+            {
                 _card?.Projects.Remove(p);
+                ProjectRemoved?.Invoke(p);
+            }
         }
 
         private void Deadline_Click(object sender, RoutedEventArgs e)

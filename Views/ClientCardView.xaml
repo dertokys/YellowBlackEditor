@@ -531,6 +531,30 @@
                                             <Button Grid.Column="6" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
                                                     Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveProject_Click"/>
                                         </Grid>
+                                        <Grid Margin="30,8,0,0">
+                                            <StackPanel x:Name="SharePanel" Orientation="Horizontal">
+                                                <Button Style="{DynamicResource TextButton}" Margin="-10,0,0,0" Click="ShareProject_Click"
+                                                        ToolTip="Проект появится в разделе «Общие проекты» у всех, у кого настроен обмен. Правки будут видны всем участникам">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                                        <TextBlock Text="Поделиться с коллегами"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <TextBlock Text="{Binding SharedNote}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <Grid x:Name="SharedPanel" Visibility="Collapsed">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding SharedText}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding SharedText}"/>
+                                                <Button Grid.Column="2" Style="{DynamicResource TextButton}" Content="Открыть в общих" Margin="8,0,0,0" Click="OpenSharedProject_Click"/>
+                                            </Grid>
+                                        </Grid>
                                         <StackPanel Margin="30,12,0,0" Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
                                             <TextBlock Text="На чём остановились" Style="{DynamicResource FieldLabel}"/>
                                             <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
@@ -544,6 +568,10 @@
                                 <DataTemplate.Triggers>
                                     <DataTrigger Binding="{Binding IsClosed}" Value="True">
                                         <Setter TargetName="card" Property="Opacity" Value="0.65"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsShared}" Value="True">
+                                        <Setter TargetName="SharePanel" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="SharedPanel" Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>

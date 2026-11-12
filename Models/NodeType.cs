@@ -7,6 +7,8 @@ namespace YellowBlackEditor.Models
         Attachment,
         Client,
         ProjectGroup,
-        Project
+        Project,
+        SharedGroup,
+        SharedProject
     }
 }

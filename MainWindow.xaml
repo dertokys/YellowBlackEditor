@@ -199,6 +199,11 @@
                                         <Setter TargetName="IconTb" Property="VerticalAlignment" Value="Top"/>
                                         <Setter TargetName="IconTb" Property="Margin" Value="0,2,0,0"/>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding Type}" Value="SharedProject">
+                                        <Setter TargetName="HintTb" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="IconTb" Property="VerticalAlignment" Value="Top"/>
+                                        <Setter TargetName="IconTb" Property="Margin" Value="0,2,0,0"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding ReminderState}" Value="1">
                                         <Setter TargetName="BellTb" Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
@@ -284,6 +289,7 @@
                 </Grid>
 
                 <views:ClientCardView x:Name="ClientView" Grid.Row="1" Visibility="Collapsed"/>
+                <views:SharedProjectView x:Name="SharedView" Grid.Row="1" Visibility="Collapsed"/>
             </Grid>
         </Grid>
     </DockPanel>

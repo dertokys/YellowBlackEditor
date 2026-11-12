@@ -148,6 +148,14 @@ namespace YellowBlackEditor.Utils
                 WriteAtomic(projectsPath, projectsJson);
         }
 
+        public static void SaveProjects(string folder, IEnumerable<ClientProject> projects)
+        {
+            var projectsPath = ProjectsPath(folder);
+            var projectsJson = JsonSerializer.Serialize(projects.ToList(), Options);
+            if (!File.Exists(projectsPath) || File.ReadAllText(projectsPath) != projectsJson)
+                WriteAtomic(projectsPath, projectsJson);
+        }
+
         private static void WriteAtomic(string path, string text)
         {
             var tmp = path + ".tmp";

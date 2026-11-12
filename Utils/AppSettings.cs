@@ -10,6 +10,13 @@ namespace YellowBlackEditor.Utils
         public bool TrayHintShown { get; set; }
         public bool SyncEnabled { get; set; }
         public string SyncFolder { get; set; } = "";
+        public string UserName { get; set; } = "";
+
+        public static string UserId => Environment.MachineName + "\\" + Environment.UserName;
+        public static string MachineName => Environment.MachineName;
+        public static string DefaultUserName => Environment.UserName;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string DisplayName => string.IsNullOrWhiteSpace(UserName) ? DefaultUserName : UserName.Trim();
 
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string RunValue = "YellowBlackNotes";
