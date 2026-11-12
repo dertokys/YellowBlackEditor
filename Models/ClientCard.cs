@@ -138,6 +138,7 @@ namespace YellowBlackEditor.Models
         public ObservableCollection<ClientContact> Contacts { get; set; } = new();
         public ObservableCollection<RemoteAccess> Accesses { get; set; } = new();
         public ObservableCollection<Credential> Credentials { get; set; } = new();
+        [JsonIgnore]
         public ObservableCollection<ClientProject> Projects { get; set; } = new();
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ObservableCollection<Reminder>? Reminders { get; set; }

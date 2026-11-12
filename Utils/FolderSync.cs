@@ -104,9 +104,11 @@ namespace YellowBlackEditor.Utils
                     if (s != null && Same(l.LastWriteTimeUtc.Ticks, s.L))
                     {
                         FileSystem.DeleteFile(lPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                        var clientDir = Path.GetDirectoryName(lPath)!;
+                        if (Directory.Exists(clientDir) && !Directory.EnumerateDirectories(clientDir).Any())
+                            FileSystem.DeleteDirectory(clientDir, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                         result.LocalChanged.Add(rel);
                         result.StructureChanged = true;
-                        RemoveEmptyParents(Path.GetDirectoryName(lPath)!, _localRoot);
                         continue;
                     }
                     Copy(lPath, rPath, _remoteRoot);
@@ -135,13 +137,13 @@ namespace YellowBlackEditor.Utils
 
         private static bool Same(long a, long b) => Math.Abs(a - b) <= Tolerance.Ticks;
 
-        private static bool Excluded(string name) =>
-            name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) ||
-            name.EndsWith(".synctmp", StringComparison.OrdinalIgnoreCase) ||
-            name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) ||
-            name.StartsWith("~$") ||
-            name.Equals("Thumbs.db", StringComparison.OrdinalIgnoreCase) ||
-            name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase);
+        private static bool Shared(string rel)
+        {
+            var parts = rel.Split(Path.DirectorySeparatorChar);
+            return parts.Length == 2 &&
+                   parts[1].Equals("client.json", StringComparison.OrdinalIgnoreCase) &&
+                   !parts[0].Equals(TrashFolderName, StringComparison.OrdinalIgnoreCase);
+        }
 
         private static Dictionary<string, FileInfo> Scan(string root)
         {
@@ -150,7 +152,7 @@ namespace YellowBlackEditor.Utils
             foreach (var f in new DirectoryInfo(root).EnumerateFiles("*", System.IO.SearchOption.AllDirectories))
             {
                 var rel = Path.GetRelativePath(root, f.FullName);
-                if (Excluded(f.Name) || rel.StartsWith(TrashFolderName + "\\", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!Shared(rel)) continue;
                 map[rel] = f;
             }
             return map;

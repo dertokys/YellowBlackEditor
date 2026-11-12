@@ -37,13 +37,8 @@ namespace YellowBlackEditor
             {
                 try
                 {
-                    var path = ClientStore.CardPath(client.FullPath);
-                    var raw = File.ReadAllText(path);
-                    if (!raw.Contains("\"ProtectedPassword\"") && !raw.Contains("\"Reminders\"")) continue;
+                    if (!ClientStore.NeedsMigration(client.FullPath)) continue;
                     var card = ClientStore.Load(client.FullPath);
-                    var protectedBefore = raw.Split("\"ProtectedPassword\"").Length - 1;
-                    var protectedAfter = card.Secrets().Count(x => x.ProtectedPassword != null);
-                    if (card.Reminders == null && protectedAfter == protectedBefore) continue;
                     if (card.Reminders is { Count: > 0 })
                     {
                         var rel = RelativePath(client);
@@ -130,7 +125,7 @@ namespace YellowBlackEditor
                 SyncText.Text = "Обмен: " + DateTime.Now.ToString("HH:mm");
                 SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
                 if (r.Conflicts > 0)
-                    Status($"Обмен: одну заметку меняли двое, оставлена более свежая версия. Вторая сохранена в {Path.Combine(_appConfigDir, "conflicts")}");
+                    Status($"Обмен: карточку клиента меняли двое, оставлена более свежая версия. Вторая сохранена в {Path.Combine(_appConfigDir, "conflicts")}");
                 else if (manual)
                     Status(r.Uploaded == 0 && r.Downloaded == 0
                         ? "Обмен завершён: всё уже совпадает"

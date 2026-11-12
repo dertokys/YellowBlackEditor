@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,6 +11,7 @@ namespace YellowBlackEditor.Utils
     public static class ClientStore
     {
         public const string FileName = "client.json";
+        public const string ProjectsFileName = "projects.json";
 
         private static readonly JsonSerializerOptions Options = new()
         {
@@ -18,26 +20,60 @@ namespace YellowBlackEditor.Utils
         };
 
         public static string CardPath(string folder) => Path.Combine(folder, FileName);
+        public static string ProjectsPath(string folder) => Path.Combine(folder, ProjectsFileName);
 
         public static bool IsClientFolder(string folder) => File.Exists(CardPath(folder));
 
-        public static ClientCard Load(string folder)
+        public static bool NeedsMigration(string folder)
+        {
+            var raw = File.ReadAllText(CardPath(folder));
+            return raw.Contains("\"Projects\"") || raw.Contains("\"Reminders\"") || raw.Contains("\"ProtectedPassword\"");
+        }
+
+        private static ClientCard Read(string folder)
         {
             var path = CardPath(folder);
+            string raw;
             ClientCard card;
             try
             {
-                card = File.Exists(path)
-                    ? JsonSerializer.Deserialize<ClientCard>(File.ReadAllText(path), Options) ?? new ClientCard()
-                    : new ClientCard();
+                raw = File.Exists(path) ? File.ReadAllText(path) : "{}";
+                card = JsonSerializer.Deserialize<ClientCard>(raw, Options) ?? new ClientCard();
             }
             catch
             {
                 var bak = path + ".bak";
-                card = File.Exists(bak)
-                    ? JsonSerializer.Deserialize<ClientCard>(File.ReadAllText(bak), Options) ?? new ClientCard()
-                    : throw new InvalidDataException("Карточка клиента повреждена: " + path);
+                if (!File.Exists(bak)) throw new InvalidDataException("Карточка клиента повреждена: " + path);
+                raw = File.ReadAllText(bak);
+                card = JsonSerializer.Deserialize<ClientCard>(raw, Options) ?? new ClientCard();
             }
+
+            var projectsPath = ProjectsPath(folder);
+            if (File.Exists(projectsPath))
+            {
+                try
+                {
+                    card.Projects = JsonSerializer.Deserialize<ObservableCollection<ClientProject>>(File.ReadAllText(projectsPath), Options) ?? new();
+                }
+                catch
+                {
+                    var bak = projectsPath + ".bak";
+                    if (File.Exists(bak))
+                        card.Projects = JsonSerializer.Deserialize<ObservableCollection<ClientProject>>(File.ReadAllText(bak), Options) ?? new();
+                }
+            }
+            else
+            {
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("Projects", out var legacy) && legacy.ValueKind == JsonValueKind.Array)
+                    card.Projects = JsonSerializer.Deserialize<ObservableCollection<ClientProject>>(legacy.GetRawText(), Options) ?? new();
+            }
+            return card;
+        }
+
+        public static ClientCard Load(string folder)
+        {
+            var card = Read(folder);
 
             foreach (var a in card.Secrets())
             {
@@ -58,9 +94,22 @@ namespace YellowBlackEditor.Utils
 
         public static void Save(string folder, ClientCard card)
         {
-            var path = CardPath(folder);
+            var cardPath = CardPath(folder);
+            var cardJson = JsonSerializer.Serialize(card, Options);
+            if (!File.Exists(cardPath) || File.ReadAllText(cardPath) != cardJson)
+                WriteAtomic(cardPath, cardJson);
+
+            var projectsPath = ProjectsPath(folder);
+            if (card.Projects.Count == 0 && !File.Exists(projectsPath)) return;
+            var projectsJson = JsonSerializer.Serialize(card.Projects, Options);
+            if (!File.Exists(projectsPath) || File.ReadAllText(projectsPath) != projectsJson)
+                WriteAtomic(projectsPath, projectsJson);
+        }
+
+        private static void WriteAtomic(string path, string text)
+        {
             var tmp = path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(card, Options), new UTF8Encoding(false));
+            File.WriteAllText(tmp, text, new UTF8Encoding(false));
             if (File.Exists(path)) File.Copy(path, path + ".bak", true);
             File.Move(tmp, path, true);
         }
@@ -69,10 +118,7 @@ namespace YellowBlackEditor.Utils
         {
             try
             {
-                var path = CardPath(folder);
-                if (!File.Exists(path)) return "";
-                var card = JsonSerializer.Deserialize<ClientCard>(File.ReadAllText(path), Options);
-                return card?.SearchText() ?? "";
+                return File.Exists(CardPath(folder)) ? Read(folder).SearchText() : "";
             }
             catch
             {
