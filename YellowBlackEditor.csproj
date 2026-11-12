@@ -1,10 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-	<UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\App.ico</ApplicationIcon>
+    <Version>1.2.0</Version>
+    <Product>Yellow Black Notes</Product>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\App.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
 </Project>

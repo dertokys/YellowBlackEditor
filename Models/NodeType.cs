@@ -1,9 +1,10 @@
-﻿namespace YellowBlackEditor.Models
+namespace YellowBlackEditor.Models
 {
     public enum NodeType
     {
         Section,
         Document,
-        Attachment 
+        Attachment,
+        Client
     }
 }

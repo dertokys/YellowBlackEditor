@@ -49,6 +49,15 @@ namespace YellowBlackEditor.Utils
 
             var accentLight = string.IsNullOrWhiteSpace(s.AccentLight) ? Lighten(s.Accent, 0.25) : s.AccentLight;
             SetBrush("AccentBrushLight", accentLight);
+            SetBrush("AccentSoftBrush", Mix(s.Accent, s.Panel, 0.22));
+        }
+
+        private static string Mix(string fgHex, string bgHex, double ratio)
+        {
+            var a = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fgHex)!;
+            var b = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(bgHex)!;
+            byte M(byte x, byte y) => (byte)Math.Round(y + (x - y) * ratio);
+            return $"#FF{M(a.R, b.R):X2}{M(a.G, b.G):X2}{M(a.B, b.B):X2}";
         }
 
         private static void SetBrush(string key, string hex)

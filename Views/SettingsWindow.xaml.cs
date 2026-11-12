@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+using System;
 using System.Windows;
 using System.Windows.Input;
 using YellowBlackEditor.Utils;
@@ -20,12 +19,12 @@ namespace YellowBlackEditor.Views
         private TargetField _active = TargetField.Accent;
 
         private bool _saved;
-        private string? _captureTarget;
         private readonly KeyGestureConverter _conv = new KeyGestureConverter();
 
         public SettingsWindow(string themePath, string hotkeysPath)
         {
             InitializeComponent();
+            SourceInitialized += (_, _) => YellowBlackEditor.Utils.DarkTitleBar.Apply(this);
             _themePath = themePath;
             _hotkeysPath = hotkeysPath;
 
@@ -43,14 +42,22 @@ namespace YellowBlackEditor.Views
             HkNavParent.Text = _hotkeysWork.NavParent;
             HkNavChild.Text = _hotkeysWork.NavChild;
 
+            foreach (var size in new[] { 12, 13, 14, 15, 16, 17, 18, 20, 22, 24 })
+            {
+                EditorFontBox.Items.Add(size);
+                TreeFontBox.Items.Add(size);
+            }
+            EditorFontBox.SelectedItem = (int)Math.Round(ThemeManager.Current.EditorFontSize);
+            TreeFontBox.SelectedItem = (int)Math.Round(ThemeManager.Current.TreeFontSize);
+            if (EditorFontBox.SelectedIndex < 0) EditorFontBox.SelectedItem = 16;
+            if (TreeFontBox.SelectedIndex < 0) TreeFontBox.SelectedItem = 15;
+
             UpdatePreviews();
             HookEvents();
             UpdateActiveUi();
 
             Loaded += (s, e) => UpdateActiveUi();
             this.Closing += SettingsWindow_Closing;
-
-            this.PreviewKeyDown += new System.Windows.Input.KeyEventHandler(SettingsWindow_PreviewKeyDown);
         }
 
         private void HookEvents()
@@ -169,6 +176,8 @@ namespace YellowBlackEditor.Views
                 s.Border = "#232323";
                 s.SubText = "#BDBDBD";
                 s.AccentLight = "";
+                if (EditorFontBox.SelectedItem is int ef) s.EditorFontSize = ef;
+                if (TreeFontBox.SelectedItem is int tf) s.TreeFontSize = tf;
                 ThemeManager.Apply(s);
                 ThemeManager.Save(_themePath);
 
@@ -195,7 +204,8 @@ namespace YellowBlackEditor.Views
             }
             catch (Exception ex)
             {
-                ThemedMessageBox.Show(this, "Ошибка", $"Не удалось сохранить настройки:\n{ex.Message}", MessageBoxImage.Error);
+                ThemedMessageBox.Show(this, "Не удалось сохранить настройки",
+                    $"Проверьте формат цвета, например #FFC107, и сочетания клавиш.\n\nПодробности: {ex.Message}", MessageBoxImage.Error);
             }
         }
 
@@ -257,59 +267,6 @@ namespace YellowBlackEditor.Views
                     }
                 }
             }
-        }
-
-        private void SettingsWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (string.IsNullOrEmpty(_captureTarget)) return;
-
-            var mods = System.Windows.Input.Keyboard.Modifiers;
-            var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
-
-            if (key == System.Windows.Input.Key.LeftCtrl || key == System.Windows.Input.Key.RightCtrl ||
-                key == System.Windows.Input.Key.LeftAlt || key == System.Windows.Input.Key.RightAlt ||
-                key == System.Windows.Input.Key.LeftShift || key == System.Windows.Input.Key.RightShift ||
-                key == System.Windows.Input.Key.LWin || key == System.Windows.Input.Key.RWin)
-            {
-                e.Handled = true;
-                return;
-            }
-
-            string gestureText = BuildGestureText(key, mods);
-
-            switch (_captureTarget)
-            {
-                case "CreateSection": HkCreateSection.Text = gestureText; break;
-                case "CreateDocument": HkCreateDocument.Text = gestureText; break;
-                case "NavPrev": HkNavPrev.Text = gestureText; break;
-                case "NavNext": HkNavNext.Text = gestureText; break;
-                case "NavParent": HkNavParent.Text = gestureText; break;
-                case "NavChild": HkNavChild.Text = gestureText; break;
-            }
-
-            _captureTarget = null;
-            e.Handled = true;
-        }
-
-        private string BuildGestureText(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys mods)
-        {
-            var sb = new StringBuilder();
-            if (mods.HasFlag(System.Windows.Input.ModifierKeys.Control)) sb.Append("Ctrl+");
-            if (mods.HasFlag(System.Windows.Input.ModifierKeys.Alt)) sb.Append("Alt+");
-            if (mods.HasFlag(System.Windows.Input.ModifierKeys.Shift)) sb.Append("Shift+");
-            if (mods.HasFlag(System.Windows.Input.ModifierKeys.Windows)) sb.Append("Windows+");
-
-            string keyText;
-            if (key >= System.Windows.Input.Key.A && key <= System.Windows.Input.Key.Z)
-                keyText = key.ToString();
-            else if (key >= System.Windows.Input.Key.D0 && key <= System.Windows.Input.Key.D9)
-                keyText = ((char)('0' + (key - System.Windows.Input.Key.D0))).ToString();
-            else if (key >= System.Windows.Input.Key.NumPad0 && key <= System.Windows.Input.Key.NumPad9)
-                keyText = "NumPad" + (key - System.Windows.Input.Key.NumPad0);
-            else
-                keyText = key.ToString();
-
-            return sb.ToString() + keyText;
         }
     }
 }

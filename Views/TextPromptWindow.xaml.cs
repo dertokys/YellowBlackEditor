@@ -1,24 +1,26 @@
-﻿using System;
+using System;
 using System.Windows;
 
 namespace YellowBlackEditor.Views
 {
     public partial class TextPromptWindow : Window
     {
-        public string Prompt { get; set; } = "Введите значение:";
+        public string Prompt { get; set; } = "Название";
         public string InputText { get; set; } = "";
         public Func<string?>? GetSelection { get; set; }
 
-        public TextPromptWindow(string prompt, string initial = "", double? width = null, double? height = null, Func<string?>? getSelection = null)
+        public TextPromptWindow(string prompt, string initial = "", double? width = null, Func<string?>? getSelection = null, string okText = "Создать")
         {
             InitializeComponent();
+            SourceInitialized += (_, _) => YellowBlackEditor.Utils.DarkTitleBar.Apply(this);
             DataContext = this;
             Prompt = prompt;
             InputText = initial;
             GetSelection = getSelection;
+            OkBtn.Content = okText;
 
             if (width.HasValue) this.Width = width.Value;
-            if (height.HasValue) this.Height = height.Value;
+
 
             Loaded += (s, e) =>
             {
@@ -93,9 +95,9 @@ namespace YellowBlackEditor.Views
                     .Replace("{datetime}", now.ToString("yyyy-MM-dd HH-mm-ss"));
         }
 
-        public static string? Show(Window owner, string prompt, string initial = "", double? width = null, double? height = null, Func<string?>? getSelection = null)
+        public static string? Show(Window owner, string prompt, string initial = "", double? width = null, Func<string?>? getSelection = null, string okText = "Создать")
         {
-            var dlg = new TextPromptWindow(prompt, initial, width, height, getSelection) { Owner = owner };
+            var dlg = new TextPromptWindow(prompt, initial, width, getSelection, okText) { Owner = owner };
             return dlg.ShowDialog() == true ? dlg.InputText : null;
         }
     }

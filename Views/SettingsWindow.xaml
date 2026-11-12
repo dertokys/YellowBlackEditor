@@ -1,7 +1,7 @@
-﻿<Window x:Class="YellowBlackEditor.Views.SettingsWindow"
+<Window x:Class="YellowBlackEditor.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Настройки оформления"
+        Title="Настройки"
         Height="560" Width="720" MinHeight="420" MinWidth="560"
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
@@ -28,10 +28,9 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="40"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Акцентный цвет:" VerticalAlignment="Center"/>
+                            <TextBlock Text="Акцентный цвет" VerticalAlignment="Center"/>
                             <TextBox Grid.Column="1" x:Name="AccentBox" Margin="8,0" Height="28"
-                                     Background="{DynamicResource PanelBrush2}"
-                                     Foreground="{DynamicResource TextBrush}"
+                                     Style="{DynamicResource FieldBox}"
                                      GotFocus="AccentBox_GotFocus"/>
                             <Rectangle Grid.Column="2" Width="28" Height="28" RadiusX="6" RadiusY="6"
                                        Stroke="{DynamicResource BorderBrush1}" StrokeThickness="1"
@@ -48,10 +47,9 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="40"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Цвет текста:" VerticalAlignment="Center"/>
+                            <TextBlock Text="Цвет текста" VerticalAlignment="Center"/>
                             <TextBox Grid.Column="1" x:Name="TextBoxColor" Margin="8,0" Height="28"
-                                     Background="{DynamicResource PanelBrush2}"
-                                     Foreground="{DynamicResource TextBrush}"
+                                     Style="{DynamicResource FieldBox}"
                                      GotFocus="TextBoxColor_GotFocus"/>
                             <Rectangle Grid.Column="2" Width="28" Height="28" RadiusX="6" RadiusY="6"
                                        Stroke="{DynamicResource BorderBrush1}" StrokeThickness="1"
@@ -68,10 +66,9 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="40"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Фон панелей:" VerticalAlignment="Center"/>
+                            <TextBlock Text="Фон панелей" VerticalAlignment="Center"/>
                             <TextBox Grid.Column="1" x:Name="PanelBox" Margin="8,0" Height="28"
-                                     Background="{DynamicResource PanelBrush2}"
-                                     Foreground="{DynamicResource TextBrush}"
+                                     Style="{DynamicResource FieldBox}"
                                      GotFocus="PanelBox_GotFocus"/>
                             <Rectangle Grid.Column="2" Width="28" Height="28" RadiusX="6" RadiusY="6"
                                        Stroke="{DynamicResource BorderBrush1}" StrokeThickness="1"
@@ -79,9 +76,17 @@
                         </Grid>
                     </Border>
 
-                    <TextBlock Text="Быстрый выбор цвета:" Margin="0,8,0,4"
+                    <TextBlock Text="Готовые цвета" Margin="0,8,0,4"
                                Foreground="{DynamicResource SubTextBrush}"/>
-                    <WrapPanel x:Name="QuickAccents" ItemHeight="26" ItemWidth="26"/>
+                    <WrapPanel x:Name="QuickAccents" ItemHeight="30" ItemWidth="30"/>
+
+                    <TextBlock Text="Размер шрифта" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Текст заметок" VerticalAlignment="Center" Width="120"/>
+                        <ComboBox x:Name="EditorFontBox" Style="{DynamicResource AccentCombo}" Width="90" Height="32" Margin="0"/>
+                        <TextBlock Text="Дерево слева" VerticalAlignment="Center" Width="110" Margin="24,0,0,0"/>
+                        <ComboBox x:Name="TreeFontBox" Style="{DynamicResource AccentCombo}" Width="90" Height="32" Margin="0"/>
+                    </StackPanel>
 
                     <TextBlock Text="Горячие клавиши" FontWeight="SemiBold" Margin="0,12,0,6"/>
                     <Grid>
@@ -99,43 +104,37 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Создать раздел:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="0" Grid.Column="1" x:Name="HkCreateSection" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="0" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="CreateSection" Margin="6,0,0,0" Height="25"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Создать раздел" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="0" Grid.Column="1" x:Name="HkCreateSection" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="0" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="CreateSection" Margin="6,3,0,3"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Создать файл:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="1" Grid.Column="1" x:Name="HkCreateDocument" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="1" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="CreateDocument" Margin="6,0,0,0" Height="25"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Создать заметку" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="1" Grid.Column="1" x:Name="HkCreateDocument" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="1" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="CreateDocument" Margin="6,3,0,3"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Перейти вверх:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="2" Grid.Column="1" x:Name="HkNavPrev" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="2" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="NavPrev" Margin="6,0,0,0" Height="25"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Перейти к предыдущему" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="2" Grid.Column="1" x:Name="HkNavPrev" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="2" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="NavPrev" Margin="6,3,0,3"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Перейти вниз:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="3" Grid.Column="1" x:Name="HkNavNext" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="3" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="NavNext" Margin="6,0,0,0" Height="25"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Перейти к следующему" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="3" Grid.Column="1" x:Name="HkNavNext" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="3" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="NavNext" Margin="6,3,0,3"/>
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="К родителю:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="4" Grid.Column="1" x:Name="HkNavParent" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="4" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="NavParent" Margin="6,0,0,0" Background="#FFDDDDDD" Height="25"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Перейти к родительскому" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="4" Grid.Column="1" x:Name="HkNavParent" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="4" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="NavParent" Margin="6,3,0,3"/>
 
-                        <TextBlock Grid.Row="5" Grid.Column="0" Text="К дочернему:" VerticalAlignment="Center"/>
-                        <TextBox  Grid.Row="5" Grid.Column="1" x:Name="HkNavChild" Margin="6,2" Height="26"
-                                  Background="{DynamicResource PanelBrush2}" Foreground="{DynamicResource TextBrush}"/>
-                        <Button   Grid.Row="5" Grid.Column="2" Content="Назначить" Click="RecordHotkey_Click" Tag="NavChild" Margin="6,0,0,0" Height="25"/>
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Перейти к вложенному" VerticalAlignment="Center"/>
+                        <TextBox  Grid.Row="5" Grid.Column="1" x:Name="HkNavChild" Margin="6,3" Style="{DynamicResource FieldBox}"/>
+                        <Button   Grid.Row="5" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="38" Content="Записать" Click="RecordHotkey_Click" Tag="NavChild" Margin="6,3,0,3"/>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
 
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                <Button Width="120" Style="{DynamicResource AccentButton}" Content="Сбросить" Click="Reset_Click"/>
-                <Button Width="120" Margin="8,0,0,0" Content="Отмена" Click="Cancel_Click"/>
-                <Button Width="120" Margin="8,0,0,0" Style="{DynamicResource AccentButton}" Content="Сохранить" Click="Save_Click"/>
+                <Button Style="{DynamicResource SecondaryButton}" Content="Вернуть цвета по умолчанию" Click="Reset_Click"/>
+                <Button Margin="8,0,0,0" Style="{DynamicResource SecondaryButton}" Content="Отмена" Click="Cancel_Click" IsCancel="True"/>
+                <Button Height="36" Margin="8,0,0,0" Style="{DynamicResource AccentButton}" Content="Сохранить" Click="Save_Click" IsDefault="True"/>
             </StackPanel>
         </Grid>
     </Border>

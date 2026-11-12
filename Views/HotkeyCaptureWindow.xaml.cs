@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 
@@ -11,6 +11,7 @@ namespace YellowBlackEditor.Views
         public HotkeyCaptureWindow()
         {
             InitializeComponent();
+            SourceInitialized += (_, _) => YellowBlackEditor.Utils.DarkTitleBar.Apply(this);
 
             this.PreviewKeyDown += new System.Windows.Input.KeyEventHandler(this.OnPreviewKeyDown);
             this.Loaded += (s, e) => this.Focus();

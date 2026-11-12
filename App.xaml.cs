@@ -1,4 +1,11 @@
-﻿namespace YellowBlackEditor
+namespace YellowBlackEditor
 {
-    public partial class App : System.Windows.Application { }
+    public partial class App : System.Windows.Application
+    {
+        protected override void OnStartup(System.Windows.StartupEventArgs e)
+        {
+            base.OnStartup(e);
+        }
+    }
 }
+

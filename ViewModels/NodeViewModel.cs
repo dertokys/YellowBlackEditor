@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using YellowBlackEditor.Models;
@@ -24,10 +24,13 @@ namespace YellowBlackEditor.ViewModels
         public bool IsVisible { get => _isVisible; set { _isVisible = value; OnPropertyChanged(); } }
         public bool IsHit { get => _isHit; set { _isHit = value; OnPropertyChanged(); } }
 
-        public string Icon =>
-            Type == NodeType.Section ? "📁" :
-            Type == NodeType.Document ? "📝" :
-            "🖼️";
+        public string Glyph => Type switch
+        {
+            NodeType.Section => "",
+            NodeType.Document => "",
+            NodeType.Client => "",
+            _ => ""
+        };
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? propName = null)
