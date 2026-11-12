@@ -273,6 +273,7 @@ namespace YellowBlackEditor
                 _hotkeys = HotkeyManager.Load(HotkeyConfigPath);
                 HotkeyManager.ApplyToWindow(this, _hotkeys, CreateSectionCmd, CreateDocumentCmd, NavPrevCmd, NavNextCmd, NavParentCmd, NavChildCmd);
                 ApplyFontSizes();
+                _appSettings = AppSettings.Load();
                 Status("Настройки сохранены");
             }
         }
@@ -513,6 +514,7 @@ namespace YellowBlackEditor
             else ShowEmpty(node);
 
             UpdateTitle();
+            UpdateNoteReminderButton();
         }
 
         private NodeViewModel? _emptyStateNode;
@@ -1224,6 +1226,7 @@ namespace YellowBlackEditor
                 node.FullPath = newDir;
                 node.Name = Path.GetFileName(newDir);
                 UpdatePathsRecursively(node, oldDir, newDir);
+                MoveNoteReminders(oldDir, newDir);
                 _contentCache.Clear();
 
                 if (ReferenceEquals(_currentDocNode, node) || ReferenceEquals(_currentClientNode, node) || ReferenceEquals(_emptyStateNode, node))
@@ -1403,7 +1406,12 @@ namespace YellowBlackEditor
         private void AddClientUnder(NodeViewModel section)
         {
             var node = CreateFolderNode(section, "Организация или ИП", NodeType.Client);
-            if (node != null) Status($"Клиент «{node.Name}» создан, заполните карточку");
+            if (node == null) return;
+            Status($"Клиент «{node.Name}» создан, заполните карточку");
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (ReferenceEquals(_currentClientNode, node)) ClientView.FocusFirstField();
+            }, DispatcherPriority.ContextIdle);
         }
 
         private void AddDocument_Click(object sender, RoutedEventArgs e)
@@ -1631,6 +1639,11 @@ namespace YellowBlackEditor
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            if (HideToTrayInsteadOfClosing())
+            {
+                e.Cancel = true;
+                return;
+            }
             _saveTimer.Stop();
             if (!SaveAll() &&
                 !ThemedMessageBox.Confirm(this, "Изменения не сохранены", "Если закрыть программу сейчас, последние правки пропадут.",

@@ -82,6 +82,8 @@ namespace YellowBlackEditor.Models
 
         public bool Notified { get; set; }
 
+        public string NotePath { get; set; } = "";
+
         [JsonIgnore]
         public string DueText
         {

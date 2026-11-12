@@ -121,7 +121,43 @@ namespace YellowBlackEditor.Views
             return false;
         }
 
-        private void AddContact_Click(object sender, RoutedEventArgs e) => _card?.Contacts.Add(new ClientContact());
+        private void AddContact_Click(object sender, RoutedEventArgs e)
+        {
+            if (_card == null) return;
+            var c = new ClientContact();
+            _card.Contacts.Add(c);
+            FocusNewItem(ContactsList, c);
+        }
+
+        public void FocusFirstField()
+        {
+            Tabs.SelectedIndex = 0;
+            Dispatcher.BeginInvoke(() => InnBox.Focus(), System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+
+        private void FocusNewItem(ItemsControl list, object item)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (list.ItemContainerGenerator.ContainerFromItem(item) is not DependencyObject container) return;
+                var box = FindFirst<System.Windows.Controls.TextBox>(container);
+                if (box == null) return;
+                box.Focus();
+                box.BringIntoView();
+            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+
+        private static T? FindFirst<T>(DependencyObject root) where T : DependencyObject
+        {
+            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+                if (child is T hit && (child as UIElement)?.IsVisible != false) return hit;
+                var deeper = FindFirst<T>(child);
+                if (deeper != null) return deeper;
+            }
+            return null;
+        }
 
         private void RemoveContact_Click(object sender, RoutedEventArgs e)
         {
@@ -133,7 +169,13 @@ namespace YellowBlackEditor.Views
             _card?.Contacts.Remove(c);
         }
 
-        private void AddAccess_Click(object sender, RoutedEventArgs e) => _card?.Accesses.Add(new RemoteAccess());
+        private void AddAccess_Click(object sender, RoutedEventArgs e)
+        {
+            if (_card == null) return;
+            var a = new RemoteAccess();
+            _card.Accesses.Add(a);
+            FocusNewItem(AccessList, a);
+        }
 
         private void RemoveAccess_Click(object sender, RoutedEventArgs e)
         {
@@ -179,7 +221,13 @@ namespace YellowBlackEditor.Views
             RemindersCount.Visibility = open > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void AddProject_Click(object sender, RoutedEventArgs e) => _card?.Projects.Add(new ClientProject());
+        private void AddProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (_card == null) return;
+            var p = new ClientProject();
+            _card.Projects.Add(p);
+            FocusNewItem(ProjectsList, p);
+        }
 
         private void RemoveProject_Click(object sender, RoutedEventArgs e)
         {
@@ -193,8 +241,10 @@ namespace YellowBlackEditor.Views
         private void AddReminder_Click(object sender, RoutedEventArgs e)
         {
             if (_card == null) return;
-            _card.Reminders.Add(new Reminder { Due = DateTime.Today.AddDays(1).AddHours(10) });
+            var r = new Reminder { Due = DateTime.Today.AddDays(1).AddHours(10) };
+            _card.Reminders.Add(r);
             RefreshReminderCount();
+            FocusNewItem(RemindersList, r);
         }
 
         private void RemoveReminder_Click(object sender, RoutedEventArgs e)
@@ -207,28 +257,7 @@ namespace YellowBlackEditor.Views
         private void DuePresets_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not Reminder r) return;
-            ShowDuePresets(fe, r);
-        }
-
-        public static void ShowDuePresets(FrameworkElement anchor, Reminder r)
-        {
-            var now = DateTime.Now;
-            var today18 = DateTime.Today.AddHours(18);
-            var presets = new List<(string, DateTime)>
-            {
-                ("Через час", now.AddHours(1)),
-                (now < today18 ? "Сегодня в 18:00" : "Завтра в 18:00", now < today18 ? today18 : today18.AddDays(1)),
-                ("Завтра в 10:00", DateTime.Today.AddDays(1).AddHours(10)),
-                ("Через неделю, в 10:00", DateTime.Today.AddDays(7).AddHours(10))
-            };
-            var menu = new System.Windows.Controls.ContextMenu { PlacementTarget = anchor, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-            foreach (var (title, when) in presets)
-            {
-                var item = new System.Windows.Controls.MenuItem { Header = $"{title}  ·  {when:dd.MM HH:mm}" };
-                item.Click += (_, _) => r.Due = new DateTime(when.Year, when.Month, when.Day, when.Hour, when.Minute, 0);
-                menu.Items.Add(item);
-            }
-            menu.IsOpen = true;
+            ReminderPicker.Open(fe, r.Due, null, false, false, (d, _) => r.Due = d);
         }
 
         private void AddNote_Click(object sender, RoutedEventArgs e) => AddNoteRequested?.Invoke();

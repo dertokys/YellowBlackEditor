@@ -73,7 +73,7 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="ИНН" Style="{DynamicResource FieldLabel}"/>
                             <Grid>
-                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Inn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                                <TextBox x:Name="InnBox" Style="{DynamicResource FieldBox}" Text="{Binding Inn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
                                 <Button Style="{StaticResource CopyButton}" ToolTip="Копировать ИНН" Tag="{Binding Inn}" Click="Copy_Click"/>
                             </Grid>
                         </StackPanel>
@@ -175,7 +175,7 @@
                         <TextBlock Grid.Column="2" Text="Телефон" Style="{DynamicResource FieldLabel}"/>
                         <TextBlock Grid.Column="4" Text="Должность, когда звонить" Style="{DynamicResource FieldLabel}"/>
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding Contacts}" Focusable="False">
+                    <ItemsControl x:Name="ContactsList" ItemsSource="{Binding Contacts}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type m:ClientContact}">
                                 <Grid Margin="0,0,0,8">
@@ -235,7 +235,7 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Accesses}" Focusable="False">
+                    <ItemsControl x:Name="AccessList" ItemsSource="{Binding Accesses}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type m:RemoteAccess}">
                                 <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
@@ -384,7 +384,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <ItemsControl ItemsSource="{Binding Projects}" Focusable="False">
+                        <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}" Focusable="False">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:ClientProject}">
                                     <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
@@ -416,7 +416,7 @@
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="4">
                                                     <TextBlock Text="Срок" Style="{DynamicResource FieldLabel}"/>
-                                                    <TextBox Style="{DynamicResource DateBox}" Text="{Binding DeadlineText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг"/>
+                                                    <TextBox Style="{DynamicResource DeadlineBox}" Text="{Binding DeadlineText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг"/>
                                                 </StackPanel>
                                                 <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
                                                         Margin="6,0,0,2" VerticalAlignment="Bottom" Click="RemoveProject_Click"/>
@@ -475,7 +475,7 @@
                             <TextBlock Grid.Column="1" Text="Что сделать" Style="{DynamicResource FieldLabel}"/>
                             <TextBlock Grid.Column="3" Text="Когда напомнить" Style="{DynamicResource FieldLabel}"/>
                         </Grid>
-                        <ItemsControl ItemsSource="{Binding Reminders}" Focusable="False">
+                        <ItemsControl x:Name="RemindersList" ItemsSource="{Binding Reminders}" Focusable="False">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:Reminder}">
                                     <Grid Margin="0,0,0,8">
@@ -492,7 +492,7 @@
                                                  Tag="Перезвонить по поводу обмена"/>
                                         <TextBox Grid.Column="3" Style="{DynamicResource DateBox}" Text="{Binding DueText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг чч:мм"/>
                                         <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="6,0,0,0">
-                                            <Button Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Быстро выбрать срок" Click="DuePresets_Click"/>
+                                            <Button Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Выбрать день и время" Click="DuePresets_Click"/>
                                             <TextBlock x:Name="late" Text="Срок прошёл" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"
                                                        Margin="6,0,0,0" Visibility="Collapsed"/>
                                         </StackPanel>

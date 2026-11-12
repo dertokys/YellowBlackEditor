@@ -10,8 +10,11 @@ namespace YellowBlackEditor.Views
         public Reminder Item { get; init; } = new();
         public NodeViewModel? Client { get; init; }
         public ClientCard? Card { get; init; }
+        public NodeViewModel? Note { get; init; }
         public string ClientName => Client?.Name ?? "";
         public Visibility ClientVisibility => Client == null ? Visibility.Collapsed : Visibility.Visible;
+        public string NoteName => Note?.Name ?? "";
+        public Visibility NoteVisibility => Note == null ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public sealed record ReminderGroup(string Title, int Count, List<ReminderEntry> Items);
@@ -21,6 +24,7 @@ namespace YellowBlackEditor.Views
         public event Action<ReminderEntry>? EntryChanged;
         public event Action<ReminderEntry>? EntryDeleted;
         public event Action<NodeViewModel>? OpenClientRequested;
+        public event Action<NodeViewModel>? OpenNoteRequested;
         public event Action<Reminder>? AddRequested;
         public event Action<string>? StatusMessage;
 
@@ -83,9 +87,14 @@ namespace YellowBlackEditor.Views
             if (EntryOf(sender)?.Client is { } client) OpenClientRequested?.Invoke(client);
         }
 
+        private void OpenNote_Click(object sender, RoutedEventArgs e)
+        {
+            if (EntryOf(sender)?.Note is { } note) OpenNoteRequested?.Invoke(note);
+        }
+
         private void NewPresets_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement fe) ClientCardView.ShowDuePresets(fe, _draft);
+            if (sender is FrameworkElement fe) ReminderPicker.Open(fe, _draft.Due, null, false, false, (d, _) => _draft.Due = d);
         }
 
         private void NewText_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

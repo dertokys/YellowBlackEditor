@@ -199,8 +199,17 @@
                         <TextBlock x:Name="CurrentFileText" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="700"
                                    ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                     </StackPanel>
-                    <Button x:Name="RenameBtn" Grid.Column="1" Style="{DynamicResource IconButton}" Content="&#xE70F;" Margin="6,0,0,0" VerticalAlignment="Bottom"
-                            Click="RenameCurrent_Click" ToolTip="Переименовать (F2)"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                        <Button x:Name="RenameBtn" Style="{DynamicResource IconButton}" Content="&#xE70F;" Margin="6,0,0,0"
+                                Click="RenameCurrent_Click" ToolTip="Переименовать (F2)"/>
+                        <Button x:Name="NoteReminderBtn" Style="{DynamicResource TextButton}" Height="34" Margin="4,0,0,0" Visibility="Collapsed"
+                                Click="NoteReminder_Click" ToolTip="Напомнить об этой заметке">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="NoteReminderIcon" Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                <TextBlock x:Name="NoteReminderText" Text="Напомнить" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                     <TextBlock Grid.Column="3" x:Name="DirtyText" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Bottom" Margin="0,0,0,8"
                                ToolTip="Сохраняется само через 1,5 секунды после правки. Ctrl+S сохраняет сразу"/>
                 </Grid>

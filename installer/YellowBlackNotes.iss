@@ -1,5 +1,5 @@
 ﻿#ifndef MyAppVersion
-  #define MyAppVersion "1.2.0"
+  #define MyAppVersion "1.3.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\bin\publish\win-x64"
@@ -30,6 +30,7 @@ UninstallDisplayName={#MyAppName}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+AppMutex=YellowBlackNotes.SingleInstance
 CloseApplications=yes
 RestartApplications=no
 

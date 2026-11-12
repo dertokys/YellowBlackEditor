@@ -17,11 +17,14 @@ namespace YellowBlackEditor
         private DispatcherTimer? _reminderTimer;
         private WF.NotifyIcon? _tray;
         private bool _remindersMode;
+        private bool _exitRequested;
+        private AppSettings _appSettings = AppSettings.Load();
 
         private void InitReminders()
         {
             RemindersPanel.StatusMessage += Status;
             RemindersPanel.OpenClientRequested += n => SelectNode(n);
+            RemindersPanel.OpenNoteRequested += n => SelectNode(n);
             RemindersPanel.EntryChanged += e => { PersistReminder(e); RefreshReminders(); };
             RemindersPanel.EntryDeleted += DeleteReminder;
             RemindersPanel.AddRequested += r =>
@@ -40,8 +43,19 @@ namespace YellowBlackEditor
                     Text = AppTitle,
                     Visible = true
                 };
-                _tray.BalloonTipClicked += (_, _) => BringToFrontAndShowReminders();
-                _tray.DoubleClick += (_, _) => BringToFrontAndShowReminders();
+                _tray.BalloonTipClicked += (_, _) =>
+                {
+                    if (_lastBalloonIsReminder) BringToFrontAndShowReminders();
+                    else BringToFront();
+                };
+                _tray.DoubleClick += (_, _) => BringToFront();
+                var menu = new WF.ContextMenuStrip();
+                menu.Items.Add("Открыть", null, (_, _) => BringToFront());
+                menu.Items.Add("Напоминания", null, (_, _) => BringToFrontAndShowReminders());
+                menu.Items.Add(new WF.ToolStripSeparator());
+                menu.Items.Add("Выход", null, (_, _) => ExitApp());
+                _tray.ContextMenuStrip = menu;
+                System.Windows.Application.Current.SessionEnding += (_, _) => _exitRequested = true;
             }
             catch (Exception ex)
             {
@@ -103,7 +117,14 @@ namespace YellowBlackEditor
 
         private List<ReminderEntry> CollectReminders()
         {
-            var list = _generalReminders.Select(r => new ReminderEntry { Item = r }).ToList();
+            var notes = Flatten(RootNodes).Where(n => n.Type == NodeType.Document)
+                .GroupBy(RelativePath, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var list = _generalReminders.Select(r => new ReminderEntry
+            {
+                Item = r,
+                Note = r.NotePath.Length > 0 && notes.TryGetValue(r.NotePath, out var note) ? note : null
+            }).ToList();
             foreach (var client in Flatten(RootNodes).Where(n => n.Type == NodeType.Client))
             {
                 var card = CardFor(client);
@@ -151,7 +172,87 @@ namespace YellowBlackEditor
         {
             var entries = CollectReminders();
             UpdateBell(entries);
+            UpdateNoteReminderButton();
             if (_remindersMode) RemindersPanel.Show(entries);
+        }
+
+        private string RelativePath(NodeViewModel node) => Path.GetRelativePath(_workspacePath, node.FullPath);
+
+        private Reminder? OpenReminderFor(NodeViewModel note)
+        {
+            var rel = RelativePath(note);
+            return _generalReminders
+                .Where(r => !r.Done && string.Equals(r.NotePath, rel, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(r => r.Due ?? DateTime.MaxValue)
+                .FirstOrDefault();
+        }
+
+        private void UpdateNoteReminderButton()
+        {
+            if (_currentDocNode == null || _remindersMode)
+            {
+                NoteReminderBtn.Visibility = Visibility.Collapsed;
+                return;
+            }
+            NoteReminderBtn.Visibility = Visibility.Visible;
+            var r = OpenReminderFor(_currentDocNode);
+            if (r?.Due == null)
+            {
+                NoteReminderText.Text = "Напомнить";
+                NoteReminderIcon.ClearValue(ForegroundProperty);
+                NoteReminderText.ClearValue(ForegroundProperty);
+                return;
+            }
+            var overdue = r.Due <= DateTime.Now;
+            NoteReminderText.Text = (overdue ? "Просрочено: " : "Напомню ") + DateText.Human(r.Due.Value);
+            var brush = (System.Windows.Media.Brush)FindResource(overdue ? "DangerBrush" : "AccentBrush");
+            NoteReminderIcon.Foreground = brush;
+            if (overdue) NoteReminderText.Foreground = brush;
+            else NoteReminderText.ClearValue(ForegroundProperty);
+        }
+
+        private void NoteReminder_Click(object sender, RoutedEventArgs e)
+        {
+            var note = _currentDocNode;
+            if (note == null) return;
+            var existing = OpenReminderFor(note);
+            ReminderPicker.Open(NoteReminderBtn, existing?.Due, existing?.Text ?? note.Name, true, existing != null,
+                (due, text) =>
+                {
+                    var r = existing ?? new Reminder { NotePath = RelativePath(note) };
+                    r.Text = string.IsNullOrWhiteSpace(text) ? note.Name : text;
+                    r.Due = due;
+                    r.Notified = false;
+                    if (existing == null) _generalReminders.Add(r);
+                    SaveGeneralReminders();
+                    RefreshReminders();
+                    Status("Напомню " + DateText.Human(due));
+                },
+                () =>
+                {
+                    if (existing == null) return;
+                    _generalReminders.Remove(existing);
+                    SaveGeneralReminders();
+                    RefreshReminders();
+                    Status("Напоминание убрано");
+                });
+        }
+
+        private void MoveNoteReminders(string oldDir, string newDir)
+        {
+            var oldRel = Path.GetRelativePath(_workspacePath, oldDir);
+            var newRel = Path.GetRelativePath(_workspacePath, newDir);
+            var changed = false;
+            foreach (var r in _generalReminders)
+            {
+                if (r.NotePath.Equals(oldRel, StringComparison.OrdinalIgnoreCase))
+                    r.NotePath = newRel;
+                else if (r.NotePath.StartsWith(oldRel + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    r.NotePath = newRel + r.NotePath.Substring(oldRel.Length);
+                else continue;
+                changed = true;
+            }
+            if (changed) SaveGeneralReminders();
         }
 
         private void UpdateBell(List<ReminderEntry> entries)
@@ -191,14 +292,16 @@ namespace YellowBlackEditor
             }
 
             UpdateBell(entries);
+            UpdateNoteReminderButton();
             if (_remindersMode && due.Count > 0) RemindersPanel.Show(entries);
         }
 
         private void Notify(List<ReminderEntry> due)
         {
             var first = due[0];
+            var source = first.Client?.Name ?? first.Note?.Name;
             var title = due.Count == 1
-                ? (first.Client != null ? $"Напоминание · {first.Client.Name}" : "Напоминание")
+                ? (source != null ? $"Напоминание · {source}" : "Напоминание")
                 : $"Напоминаний: {due.Count}";
             var text = due.Count == 1
                 ? (string.IsNullOrWhiteSpace(first.Item.Text) ? "Без текста" : first.Item.Text)
@@ -206,6 +309,7 @@ namespace YellowBlackEditor
 
             try
             {
+                _lastBalloonIsReminder = true;
                 _tray?.ShowBalloonTip(10000, title, text, WF.ToolTipIcon.Info);
             }
             catch (Exception ex)
@@ -215,12 +319,49 @@ namespace YellowBlackEditor
             Status(due.Count == 1 ? $"Напоминание: {text}" : title);
         }
 
+        private bool _lastBalloonIsReminder;
+
+        public void BringToFront()
+        {
+            if (!IsVisible) Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+            Topmost = true;
+            Topmost = false;
+            Focus();
+        }
+
         private void BringToFrontAndShowReminders()
         {
-            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-            Show();
-            Activate();
+            BringToFront();
             ShowReminders();
+        }
+
+        private void ExitApp()
+        {
+            _exitRequested = true;
+            if (!IsVisible) Show();
+            Close();
+            if (IsLoaded && IsVisible) _exitRequested = false;
+        }
+
+        private bool HideToTrayInsteadOfClosing()
+        {
+            if (_exitRequested || !_appSettings.MinimizeToTray || _tray == null) return false;
+            _saveTimer.Stop();
+            SaveAll(quiet: true);
+            SaveWindowPlacement();
+            Hide();
+            if (!_appSettings.TrayHintShown)
+            {
+                _lastBalloonIsReminder = false;
+                _tray.ShowBalloonTip(8000, AppTitle,
+                    "Программа продолжает работать в трее, чтобы напомнить вовремя. Выйти: правая кнопка по значку, «Выход».",
+                    WF.ToolTipIcon.Info);
+                _appSettings.TrayHintShown = true;
+                _appSettings.Save();
+            }
+            return true;
         }
 
         private void ShowReminders_Click(object sender, RoutedEventArgs e) => ShowReminders();
@@ -244,6 +385,7 @@ namespace YellowBlackEditor
             EditorHost.Visibility = Visibility.Collapsed;
             FormatBar.IsEnabled = false;
             RenameBtn.Visibility = Visibility.Collapsed;
+            NoteReminderBtn.Visibility = Visibility.Collapsed;
             CurrentKindText.Text = "";
             CurrentFileText.Text = "Напоминания";
             DirtyText.Text = "";

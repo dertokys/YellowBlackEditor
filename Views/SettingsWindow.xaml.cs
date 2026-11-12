@@ -19,6 +19,7 @@ namespace YellowBlackEditor.Views
         private TargetField _active = TargetField.Accent;
 
         private bool _saved;
+        private AppSettings _appSettings = new();
         private readonly KeyGestureConverter _conv = new KeyGestureConverter();
 
         public SettingsWindow(string themePath, string hotkeysPath)
@@ -30,6 +31,9 @@ namespace YellowBlackEditor.Views
 
             _originalTheme = Clone(ThemeManager.Current);
             _hotkeysWork = HotkeyManager.Load(_hotkeysPath);
+            _appSettings = AppSettings.Load();
+            TrayCheck.IsChecked = _appSettings.MinimizeToTray;
+            try { AutostartCheck.IsChecked = AppSettings.StartsWithWindows; } catch { AutostartCheck.IsEnabled = false; }
 
             AccentBox.Text = ThemeManager.Current.Accent;
             TextBoxColor.Text = ThemeManager.Current.Text;
@@ -198,6 +202,11 @@ namespace YellowBlackEditor.Views
                 ValidateGesture(hk.NavChild);
 
                 HotkeyManager.Save(_hotkeysPath, hk);
+
+                _appSettings.MinimizeToTray = TrayCheck.IsChecked == true;
+                _appSettings.Save();
+                if (AutostartCheck.IsEnabled && AppSettings.StartsWithWindows != (AutostartCheck.IsChecked == true))
+                    AppSettings.StartsWithWindows = AutostartCheck.IsChecked == true;
 
                 _saved = true;
                 DialogResult = true;

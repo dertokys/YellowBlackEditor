@@ -22,13 +22,13 @@
                     <TextBlock Text="Когда напомнить" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Style="{DynamicResource DateBox}" Text="{Binding DueText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг чч:мм"/>
                 </StackPanel>
-                <Button Grid.Column="3" Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Быстро выбрать срок" Margin="6,0,0,2"
+                <Button Grid.Column="3" Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Выбрать день и время" Margin="6,0,0,2"
                         VerticalAlignment="Bottom" Click="NewPresets_Click"/>
                 <Button Grid.Column="4" Style="{DynamicResource SecondaryButton}" Height="38" Content="Добавить" Margin="8,0,0,0"
                         VerticalAlignment="Bottom" Click="Add_Click"/>
             </Grid>
             <TextBlock x:Name="AddHint" Foreground="{DynamicResource SubTextBrush}" Margin="2,2,0,0" TextWrapping="Wrap"
-                       Text="Общее напоминание. Напоминание по клиенту добавляется в его карточке, на вкладке «Напоминания»."/>
+                       Text="Общее напоминание. Напоминание по клиенту ставится в его карточке на вкладке «Напоминания», о заметке — кнопкой «Напомнить» в её заголовке."/>
 
             <TextBlock x:Name="EmptyText" Margin="0,40,0,0" Foreground="{DynamicResource SubTextBrush}" FontSize="15" TextWrapping="Wrap"
                        Text="Напоминаний пока нет. Когда придёт срок, Windows покажет уведомление, даже если окно свёрнуто."/>
@@ -66,6 +66,13 @@
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
                                                         <TextBlock Text="{Binding ClientName}" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Grid.Column="2" Style="{DynamicResource TextButton}" Click="OpenNote_Click" Margin="12,0,0,0"
+                                                        Visibility="{Binding NoteVisibility}" ToolTip="Открыть заметку">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                                        <TextBlock Text="{Binding NoteName}" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
                                                 </Button>
                                                 <Button x:Name="snooze" Grid.Column="3" Style="{DynamicResource TextButton}" Content="Отложить на час" Margin="4,0,0,0"
