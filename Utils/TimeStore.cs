@@ -6,7 +6,15 @@ using YellowBlackEditor.Models;
 
 namespace YellowBlackEditor.Utils
 {
-    public sealed record TimeRow(string Folder, TimeEntry Entry, string Client, string Note, string Section);
+    public sealed record TimeRow(string Folder, TimeEntry Entry, string Client, string Note, string Section)
+    {
+        public bool IsProject => !string.IsNullOrEmpty(Entry.ProjectId);
+
+        public string Title => IsProject
+            ? "Проект «" + (string.IsNullOrWhiteSpace(Entry.ProjectName) ? "без названия" : Entry.ProjectName) + "»" +
+              (string.IsNullOrWhiteSpace(Entry.TaskTitle) ? "" : " · " + Entry.TaskTitle)
+            : Note.Length > 0 ? Note : "По клиенту";
+    }
 
     public static class TimeStore
     {

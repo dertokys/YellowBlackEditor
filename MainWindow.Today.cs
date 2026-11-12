@@ -32,6 +32,7 @@ namespace YellowBlackEditor
                 if (_currentClientNode != null) OpenTimeWindow(_currentClientNode.FullPath, $"Клиент «{_currentClientNode.Name}», без заметки");
             };
             ClientView.DeleteTimeRequested += DeleteTimeRow;
+            ClientView.ProjectTimeRequested += OpenProjectTime;
         }
 
         private int VirtualIndex(NodeViewModel group)
@@ -170,8 +171,9 @@ namespace YellowBlackEditor
             foreach (var r in rows.Where(r => r.Entry.Date == today).OrderByDescending(r => r.Entry.CreatedAt))
             {
                 var folder = r.Folder;
-                var title = r.Note.Length > 0 ? r.Note : r.Client.Length > 0 ? r.Client : "Без заметки";
-                var sub = (r.Note.Length > 0 && r.Client.Length > 0 ? r.Client : "По клиенту") +
+                var named = r.IsProject || r.Note.Length > 0;
+                var title = named ? r.Title : r.Client.Length > 0 ? r.Client : "Без заметки";
+                var sub = (named && r.Client.Length > 0 ? r.Client : "По клиенту") +
                           (string.IsNullOrWhiteSpace(r.Entry.Comment) ? "" : " · " + r.Entry.Comment);
                 d.Time.Add(new TodayView.Item(title, sub, TimeText.Human(r.Entry.Minutes), 0, () => OpenFolderNode(folder)));
             }
@@ -230,6 +232,39 @@ namespace YellowBlackEditor
             UpdateTimeButton();
             if (_currentClientNode != null) ClientView.ShowTime(TimeStore.ScanFolder(_workspacePath, _currentClientNode.FullPath));
             RefreshTodayIfShown();
+        }
+
+        private void OpenProjectTime(ClientProject p, ProjectTask? t)
+        {
+            if (_currentClientNode == null || _currentClient == null) return;
+            SaveAll(quiet: true);
+            try
+            {
+                ClientStore.Save(_currentClientNode.FullPath, _currentClient);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Не удалось сохранить карточку клиента", ex);
+                return;
+            }
+            var projectName = string.IsNullOrWhiteSpace(p.Name) ? "без названия" : p.Name.Trim();
+            var context = $"{_currentClientNode.Name} · проект «{projectName}»" +
+                          (t == null ? ", весь проект" : $" · этап «{(string.IsNullOrWhiteSpace(t.Title) ? "без названия" : t.Title.Trim())}»");
+            var taskIds = t == null ? null : new HashSet<string>(new[] { t }.Concat(t.AllChildren()).Select(x => x.Id));
+            Func<TimeEntry, bool> filter = t == null
+                ? e => e.ProjectId == p.Id
+                : e => e.ProjectId == p.Id && e.TaskId != null && taskIds!.Contains(e.TaskId);
+            void Stamp(TimeEntry e)
+            {
+                e.ProjectId = p.Id;
+                e.ProjectName = projectName;
+                e.TaskId = t?.Id;
+                e.TaskTitle = t == null ? null : (string.IsNullOrWhiteSpace(t.Title) ? "без названия" : t.Title.Trim());
+            }
+            if (!TimeEntryWindow.Show(this, _currentClientNode.FullPath, context, filter, Stamp)) return;
+            AfterTimeChanged();
+            Status("Время записано на " + (t == null ? "проект" : "этап"));
+            if (p.SharedId != null) SyncSoon();
         }
 
         private void DeleteTimeRow(TimeRow row)

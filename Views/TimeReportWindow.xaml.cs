@@ -73,7 +73,7 @@ namespace YellowBlackEditor.Views
                 groups = rows.GroupBy(ClientTitle)
                     .OrderByDescending(g => g.Sum(r => r.Entry.Minutes))
                     .Select(g => new Group(g.Key, TimeText.Human(g.Sum(r => r.Entry.Minutes)),
-                        g.Select(r => MakeRow(r, DateText.HumanDate(r.Entry.Date), r.Note.Length > 0 ? r.Note : "По клиенту")).ToList()))
+                        g.Select(r => MakeRow(r, DateText.HumanDate(r.Entry.Date), r.Title)).ToList()))
                     .ToList();
             }
             else
@@ -81,7 +81,7 @@ namespace YellowBlackEditor.Views
                 groups = rows.GroupBy(r => r.Entry.Date.Date)
                     .OrderBy(g => g.Key)
                     .Select(g => new Group(Cap(g.Key.ToString("dddd, d MMMM", Ru)), TimeText.Human(g.Sum(r => r.Entry.Minutes)),
-                        g.Select(r => MakeRow(r, ClientTitle(r), r.Note.Length > 0 ? r.Note : "По клиенту")).ToList()))
+                        g.Select(r => MakeRow(r, ClientTitle(r), r.Title)).ToList()))
                     .ToList();
             }
             Groups.ItemsSource = groups;
@@ -149,12 +149,12 @@ namespace YellowBlackEditor.Views
             };
             if (dlg.ShowDialog(this) != true) return;
             var sb = new StringBuilder();
-            sb.AppendLine("Дата;Клиент;Заметка;Что делали;Минут;Часов");
+            sb.AppendLine("Дата;Клиент;Заметка или проект;Что делали;Минут;Часов");
             foreach (var r in rows)
             {
                 sb.Append(r.Entry.Date.ToString("dd.MM.yyyy")).Append(';')
                   .Append(Csv(ClientTitle(r))).Append(';')
-                  .Append(Csv(r.Note)).Append(';')
+                  .Append(Csv(r.Title)).Append(';')
                   .Append(Csv(r.Entry.Comment)).Append(';')
                   .Append(r.Entry.Minutes).Append(';')
                   .AppendLine((r.Entry.Minutes / 60.0).ToString("0.##", Ru));

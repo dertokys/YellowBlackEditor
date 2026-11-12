@@ -97,19 +97,31 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <CheckBox Style="{DynamicResource DoneCheck}" IsChecked="{Binding Done}" ToolTip="Выполнено" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                     <TextBox x:Name="title" Grid.Column="1" Style="{DynamicResource FieldBox}" MinHeight="34" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
                              Tag="Этап. Enter — следующий" PreviewKeyDown="TaskTitle_PreviewKeyDown"/>
-                    <Button Grid.Column="2" Style="{DynamicResource IconButton}" Content="&#xE710;" ToolTip="Добавить вложенный этап" Margin="4,0,0,0"
+                    <Button x:Name="timeBtn" Grid.Column="2" Style="{DynamicResource TextButton}" Height="34" Padding="8,0" Margin="4,0,0,0" Click="TaskTime_Click"
+                            ToolTip="Записать время на этот этап" Focusable="False">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE916;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="timeText" Text="{Binding SpentText}" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="3" Style="{DynamicResource IconButton}" Content="&#xE710;" ToolTip="Добавить вложенный этап" Margin="2,0,0,0"
                             Click="AddSubtask_Click"/>
-                    <Button Grid.Column="3" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить этап" Click="RemoveTask_Click"/>
+                    <Button Grid.Column="4" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить этап" Click="RemoveTask_Click"/>
                 </Grid>
                 <ItemsControl ItemsSource="{Binding Children}" Margin="32,0,0,0" Focusable="False"/>
             </StackPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Done}" Value="True">
                     <Setter TargetName="title" Property="Opacity" Value="0.55"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasTime}" Value="True">
+                    <Setter TargetName="timeText" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="timeBtn" Property="ToolTip" Value="Потрачено на этап. Нажмите, чтобы добавить время"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -695,6 +707,8 @@
                                                 <ColumnDefinition Width="150"/>
                                                 <ColumnDefinition Width="12"/>
                                                 <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <ToggleButton Style="{StaticResource Expander}" IsChecked="{Binding IsExpanded}" Margin="-6,0,4,4" VerticalAlignment="Bottom"
@@ -722,7 +736,18 @@
                                                     </StackPanel>
                                                 </Button>
                                             </StackPanel>
-                                            <Button Grid.Column="6" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
+                                            <StackPanel Grid.Column="7">
+                                                <TextBlock Text="Время" Style="{DynamicResource FieldLabel}"/>
+                                                <Button Style="{DynamicResource FieldButton}" Click="ProjectTime_Click" MinWidth="120"
+                                                        ToolTip="Записать время на весь проект. Здесь же сумма по всем этапам">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE916;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"
+                                                                   Foreground="{DynamicResource SubTextBrush}"/>
+                                                        <TextBlock Text="{Binding SpentText}"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                            <Button Grid.Column="8" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
                                                     Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveProject_Click"/>
                                         </Grid>
                                         <Grid Margin="30,8,0,0">

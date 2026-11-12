@@ -19,15 +19,19 @@ namespace YellowBlackEditor.Views
 
         private readonly string _folder;
         private readonly List<TimeEntry> _entries;
+        private readonly Func<TimeEntry, bool> _filter;
+        private readonly Action<TimeEntry>? _stamp;
         private DateTime _date = DateTime.Today;
 
         public bool Changed { get; private set; }
 
-        private TimeEntryWindow(string folder, string context)
+        private TimeEntryWindow(string folder, string context, Func<TimeEntry, bool>? filter, Action<TimeEntry>? stamp)
         {
             InitializeComponent();
             SourceInitialized += (_, _) => DarkTitleBar.Apply(this);
             _folder = folder;
+            _filter = filter ?? (e => string.IsNullOrEmpty(e.ProjectId));
+            _stamp = stamp;
             _entries = TimeStore.Load(folder);
             ContextText.Text = context;
             foreach (var (label, minutes) in Quick)
@@ -45,9 +49,9 @@ namespace YellowBlackEditor.Views
             Loaded += (_, _) => MinutesBox.Focus();
         }
 
-        public static bool Show(Window owner, string folder, string context)
+        public static bool Show(Window owner, string folder, string context, Func<TimeEntry, bool>? filter = null, Action<TimeEntry>? stamp = null)
         {
-            var w = new TimeEntryWindow(folder, context) { Owner = owner };
+            var w = new TimeEntryWindow(folder, context, filter, stamp) { Owner = owner };
             w.ShowDialog();
             return w.Changed;
         }
@@ -59,15 +63,28 @@ namespace YellowBlackEditor.Views
 
         private void RefreshHistory()
         {
-            var items = _entries.OrderByDescending(e => e.Date).ThenByDescending(e => e.CreatedAt)
-                .Select(e => new HistoryItem(e, DateText_(e.Date), string.IsNullOrWhiteSpace(e.Comment) ? "—" : e.Comment, TimeText.Human(e.Minutes)))
+            var mine = _entries.Where(_filter).ToList();
+            var items = mine.OrderByDescending(e => e.Date).ThenByDescending(e => e.CreatedAt)
+                .Select(e => new HistoryItem(e, DateText_(e.Date), Describe(e), TimeText.Human(e.Minutes)))
                 .ToList();
             HistoryList.ItemsSource = items;
             HistoryCard.Visibility = items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-            TotalText.Text = "всего " + TimeText.Human(_entries.Sum(e => e.Minutes));
+            TotalText.Text = "всего " + TimeText.Human(mine.Sum(e => e.Minutes));
         }
 
         private static string DateText_(DateTime d) => Models.DateText.HumanDate(d);
+
+        private string Describe(TimeEntry e)
+        {
+            var comment = string.IsNullOrWhiteSpace(e.Comment) ? "" : e.Comment;
+            if (_stamp != null && !string.IsNullOrWhiteSpace(e.TaskTitle))
+            {
+                var probe = new TimeEntry();
+                _stamp(probe);
+                if (probe.TaskId != e.TaskId) comment = e.TaskTitle + (comment.Length > 0 ? ": " + comment : "");
+            }
+            return comment.Length == 0 ? "—" : comment;
+        }
 
         private void MinutesBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
@@ -104,7 +121,9 @@ namespace YellowBlackEditor.Views
                 MinutesBox.Focus();
                 return;
             }
-            _entries.Add(new TimeEntry { Date = _date, Minutes = minutes, Comment = CommentBox.Text.Trim() });
+            var entry = new TimeEntry { Date = _date, Minutes = minutes, Comment = CommentBox.Text.Trim() };
+            _stamp?.Invoke(entry);
+            _entries.Add(entry);
             if (!Persist()) return;
             DialogResult = true;
         }

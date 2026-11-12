@@ -269,9 +269,25 @@ namespace YellowBlackEditor.Models
             }
         }
 
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public string Name { get => _name; set => Set(ref _name, value); }
         public string Comment { get => _comment; set => Set(ref _comment, value); }
         public ObservableCollection<ProjectTask> Tasks { get; set; } = new();
+
+        private int _minutes;
+
+        [JsonIgnore]
+        public int Minutes
+        {
+            get => _minutes;
+            set
+            {
+                if (Set(ref _minutes, value)) Raise(nameof(SpentText));
+            }
+        }
+
+        [JsonIgnore]
+        public string SpentText => _minutes > 0 ? TimeText.Human(_minutes) : "Записать";
 
         public string Status
         {
@@ -378,9 +394,30 @@ namespace YellowBlackEditor.Models
         private string _title = "";
         private bool _done;
 
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public string Title { get => _title; set => Set(ref _title, value); }
         public bool Done { get => _done; set => Set(ref _done, value); }
         public ObservableCollection<ProjectTask> Children { get; set; } = new();
+
+        private int _minutes;
+
+        [JsonIgnore]
+        public int Minutes
+        {
+            get => _minutes;
+            set
+            {
+                if (!Set(ref _minutes, value)) return;
+                Raise(nameof(SpentText));
+                Raise(nameof(HasTime));
+            }
+        }
+
+        [JsonIgnore]
+        public bool HasTime => _minutes > 0;
+
+        [JsonIgnore]
+        public string SpentText => _minutes > 0 ? TimeText.Human(_minutes) : "";
 
         public IEnumerable<ProjectTask> AllChildren()
         {

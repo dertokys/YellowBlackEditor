@@ -9,6 +9,7 @@ namespace YellowBlackEditor.Models
         public string Name { get; set; } = "";
         public string Machine { get; set; } = "";
         public DateTime JoinedAt { get; set; }
+        public int Minutes { get; set; }
     }
 
     public class SharedProject

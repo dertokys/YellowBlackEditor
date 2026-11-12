@@ -84,7 +84,7 @@ namespace YellowBlackEditor.Utils
 
         private static ProjectTask CopyTask(ProjectTask t)
         {
-            var c = new ProjectTask { Title = t.Title, Done = t.Done };
+            var c = new ProjectTask { Id = t.Id, Title = t.Title, Done = t.Done };
             foreach (var ch in t.Children) c.Children.Add(CopyTask(ch));
             return c;
         }

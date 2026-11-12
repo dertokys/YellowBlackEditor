@@ -24,6 +24,7 @@ namespace YellowBlackEditor.Views
         public event Action<ClientProject>? OpenSharedRequested;
         public event Action<ClientProject>? ProjectRemoved;
         public event Action? AddTimeRequested;
+        public event Action<ClientProject, ProjectTask?>? ProjectTimeRequested;
         public event Action<TimeRow>? DeleteTimeRequested;
 
         public sealed record TimeItem(TimeRow Row, string DateText, string Title, string Comment, bool HasComment, string MinutesText);
@@ -203,7 +204,7 @@ namespace YellowBlackEditor.Views
             var list = rows.OrderByDescending(r => r.Entry.Date).ThenByDescending(r => r.Entry.CreatedAt).ToList();
             TimeList.ItemsSource = list.Select(r => new TimeItem(r,
                 DateText.HumanDate(r.Entry.Date),
-                r.Note.Length > 0 ? r.Note : "По клиенту",
+                r.Title,
                 r.Entry.Comment,
                 !string.IsNullOrWhiteSpace(r.Entry.Comment),
                 TimeText.Human(r.Entry.Minutes))).ToList();
@@ -216,12 +217,44 @@ namespace YellowBlackEditor.Views
             TimeMonth.Text = TimeText.Human(list.Where(r => r.Entry.Date >= monthStart).Sum(r => r.Entry.Minutes));
             TimeAll.Text = TimeText.Human(all);
             _monthMinutes = list.Where(r => r.Entry.Date >= monthStart).Sum(r => r.Entry.Minutes);
+            ApplyProjectTime(list);
             UpdateContractUsage();
             TimeCount.Text = all > 0 ? TimeText.Human(all) : "";
             TimeCount.Visibility = all > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void AddTime_Click(object sender, RoutedEventArgs e) => AddTimeRequested?.Invoke();
+
+        private void ApplyProjectTime(List<TimeRow> rows)
+        {
+            if (_card == null) return;
+            var byProject = rows.Where(r => r.IsProject).GroupBy(r => r.Entry.ProjectId!).ToDictionary(g => g.Key, g => g.Sum(r => r.Entry.Minutes));
+            var byTask = rows.Where(r => !string.IsNullOrEmpty(r.Entry.TaskId)).GroupBy(r => r.Entry.TaskId!).ToDictionary(g => g.Key, g => g.Sum(r => r.Entry.Minutes));
+            int TaskTotal(ProjectTask t)
+            {
+                var sum = byTask.GetValueOrDefault(t.Id);
+                foreach (var c in t.Children) sum += TaskTotal(c);
+                t.Minutes = sum;
+                return sum;
+            }
+            foreach (var p in _card.Projects)
+            {
+                p.Minutes = byProject.GetValueOrDefault(p.Id);
+                foreach (var t in p.Tasks) TaskTotal(t);
+            }
+        }
+
+        private void ProjectTime_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientProject>(sender) is { } p) ProjectTimeRequested?.Invoke(p, null);
+        }
+
+        private void TaskTime_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ProjectTask>(sender) is not { } t || _card == null) return;
+            var p = _card.Projects.FirstOrDefault(x => x.AllTasks().Contains(t));
+            if (p != null) ProjectTimeRequested?.Invoke(p, t);
+        }
 
         private void RemoveTime_Click(object sender, RoutedEventArgs e)
         {

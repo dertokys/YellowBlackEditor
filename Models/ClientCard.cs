@@ -182,7 +182,8 @@ namespace YellowBlackEditor.Models
             nameof(SoftwareAddon.Term), nameof(SoftwareAddon.ActivatedText), nameof(SoftwareAddon.EndsText),
             nameof(SoftwareAddon.DaysLeft), nameof(SoftwareAddon.State), nameof(SoftwareAddon.StateText),
             nameof(ClientProject.IsShared), nameof(ClientProject.SharedText),
-            nameof(ContractTerm.NoContract)
+            nameof(ContractTerm.NoContract),
+            nameof(ProjectTask.Minutes), nameof(ProjectTask.SpentText), nameof(ProjectTask.HasTime)
         };
 
         private void Hook(IList items)

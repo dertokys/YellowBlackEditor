@@ -94,6 +94,7 @@ namespace YellowBlackEditor
             var me = AppSettings.UserId;
             var pushes = new List<SharedProject>();
             var touched = new List<LocalShared>();
+            var timeCache = new Dictionary<string, List<TimeEntry>>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var local in LocalSharedCopies().ToList())
             {
@@ -113,6 +114,14 @@ namespace YellowBlackEditor
                 var localChanged = SharedProjects.Hash(p) != p.SharedHash;
                 var remoteChanged = p.SharedSyncedAt != sp.UpdatedAt;
                 var push = SharedProjects.EnsureMember(sp, _appSettings);
+                if (!timeCache.TryGetValue(local.Client.FullPath, out var entries))
+                    timeCache[local.Client.FullPath] = entries = TimeStore.Load(local.Client.FullPath);
+                var myMinutes = entries.Where(e => e.ProjectId == p.Id).Sum(e => e.Minutes);
+                if (sp.Members.FirstOrDefault(m => m.Id == me) is { } meMember && meMember.Minutes != myMinutes)
+                {
+                    meMember.Minutes = myMinutes;
+                    push = true;
+                }
                 if (localChanged)
                 {
                     SharedProjects.CopyContent(p, sp);

@@ -54,14 +54,17 @@ namespace YellowBlackEditor.Views
             {
                 var role = m.Id == p.OwnerId ? "ведёт проект" : "участвует";
                 if (m.Id == me) role += " · это вы";
+                if (m.Minutes > 0) role += " · " + TimeText.Human(m.Minutes);
                 var name = string.IsNullOrWhiteSpace(m.Name) ? m.Id : m.Name;
                 var tip = string.IsNullOrWhiteSpace(m.Machine) ? name : $"{name}, компьютер {m.Machine}";
                 return new MemberItem(name, name.Substring(0, 1).ToUpper(), role, tip, AvatarFor(m.Id));
             }).ToList();
 
-            UpdatedText.Text = p.UpdatedAt == default
+            var spent = p.Members.Sum(m => m.Minutes);
+            var updated = p.UpdatedAt == default
                 ? ""
                 : $"Последняя правка: {p.MemberName(p.UpdatedById)}, {DateText.Human(p.UpdatedAt.ToLocalTime())}";
+            UpdatedText.Text = spent > 0 ? $"Всего потрачено: {TimeText.Human(spent)}" + (updated.Length > 0 ? " · " + updated : "") : updated;
 
             TakeBtn.Visibility = takenByMe ? Visibility.Collapsed : Visibility.Visible;
             OpenMineBtn.Visibility = takenByMe ? Visibility.Visible : Visibility.Collapsed;
