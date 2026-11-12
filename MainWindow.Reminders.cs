@@ -62,6 +62,7 @@ namespace YellowBlackEditor
                 _tray.BalloonTipClicked += (_, _) =>
                 {
                     if (_lastBalloonIsReminder) BringToFrontAndShowReminders();
+                    else if (_balloonSharedId != null) OpenBalloonShared();
                     else BringToFront();
                 };
                 _tray.DoubleClick += (_, _) => BringToFront();

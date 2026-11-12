@@ -142,6 +142,10 @@ namespace YellowBlackEditor.Models
         public ObservableCollection<Credential> Credentials { get; set; } = new();
         [JsonIgnore]
         public ObservableCollection<ClientProject> Projects { get; set; } = new();
+        [JsonIgnore]
+        public ObservableCollection<ClientSoftware> Software { get; set; } = new();
+        [JsonIgnore]
+        public ClientContracts Contracts { get; set; } = new();
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ObservableCollection<Reminder>? Reminders { get; set; }
 
@@ -164,6 +168,9 @@ namespace YellowBlackEditor.Models
             Hook(Accesses);
             Hook(Credentials);
             Hook(Projects);
+            Hook(Software);
+            HookItem(Contracts.Spo);
+            HookItem(Contracts.Ko);
         }
 
         private static readonly HashSet<string> ViewOnlyProperties = new()
@@ -171,7 +178,11 @@ namespace YellowBlackEditor.Models
             nameof(Reminder.IsOverdue), nameof(Reminder.DueHuman), nameof(Reminder.DueInvalid),
             nameof(ClientProject.DeadlineInvalid), nameof(ClientProject.DeadlineHuman), nameof(ClientProject.IsExpanded),
             nameof(ClientProject.Progress), nameof(ClientProject.IsClosed),
-            nameof(Credential.EditingUrl), nameof(Credential.ShowLink)
+            nameof(Credential.EditingUrl), nameof(Credential.ShowLink),
+            nameof(SoftwareAddon.Term), nameof(SoftwareAddon.ActivatedText), nameof(SoftwareAddon.EndsText),
+            nameof(SoftwareAddon.DaysLeft), nameof(SoftwareAddon.State), nameof(SoftwareAddon.StateText),
+            nameof(ClientProject.IsShared), nameof(ClientProject.SharedText),
+            nameof(ContractTerm.NoContract)
         };
 
         private void Hook(IList items)
@@ -212,6 +223,15 @@ namespace YellowBlackEditor.Models
                 foreach (var l in a.Logins) parts.AddRange(new[] { l.Title, l.Login });
             }
             foreach (var c in Credentials) parts.AddRange(new[] { c.Title, c.Url, c.Login, c.Comment });
+            if (Contracts.Spo.Has) parts.Add("СПО договор " + Contracts.Spo.Hours);
+            if (Contracts.Ko.Has) parts.Add("КО договор " + Contracts.Ko.Hours);
+            parts.Add(Contracts.Spo.Note);
+            parts.Add(Contracts.Ko.Note);
+            foreach (var s in Software)
+            {
+                parts.AddRange(new[] { s.Name, s.Note });
+                parts.AddRange(s.Addons.Select(a => a.Name));
+            }
             foreach (var p in Projects)
             {
                 parts.AddRange(new[] { p.Name, p.Comment });

@@ -1,0 +1,123 @@
+<Window x:Class="YellowBlackEditor.Views.TimeReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Трудозатраты"
+        WindowStartupLocation="CenterOwner" Width="980" Height="760" MinWidth="720" MinHeight="480"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="0,0,0,1" Padding="22,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE76B;" Width="36" Height="36" Click="Prev_Click" ToolTip="Раньше"/>
+                    <TextBlock x:Name="PeriodText" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0" MinWidth="260" TextAlignment="Center"/>
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE76C;" Width="36" Height="36" Click="Next_Click" ToolTip="Позже"/>
+                    <Button x:Name="NowBtn" Style="{DynamicResource TextButton}" Content="Текущая неделя" Margin="8,0,0,0" Click="Now_Click"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton x:Name="WeekBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="90" Content="Неделя" Click="Week_Click"/>
+                    <ToggleButton x:Name="MonthBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="90" Content="Месяц" Click="Month_Click"/>
+                    <Border Width="1" Height="22" Background="{DynamicResource BorderBrush1}" Margin="10,0"/>
+                    <ToggleButton x:Name="ByDayBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="110" Content="По дням" Click="ByDay_Click"/>
+                    <ToggleButton x:Name="ByClientBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="120" Content="По клиентам" Click="ByClient_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <WrapPanel Grid.Row="1" Margin="22,16,22,4">
+            <Border Style="{DynamicResource CardBorder}" Padding="16,10" Margin="0,0,10,10" MinWidth="150">
+                <StackPanel>
+                    <TextBlock Text="Всего" Style="{DynamicResource FieldLabel}"/>
+                    <TextBlock x:Name="TotalText" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource CardBorder}" Padding="16,10" Margin="0,0,10,10" MinWidth="150">
+                <StackPanel>
+                    <TextBlock Text="Записей" Style="{DynamicResource FieldLabel}"/>
+                    <TextBlock x:Name="CountText" FontSize="22" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource CardBorder}" Padding="16,10" Margin="0,0,10,10" MinWidth="150">
+                <StackPanel>
+                    <TextBlock Text="Клиентов" Style="{DynamicResource FieldLabel}"/>
+                    <TextBlock x:Name="ClientsText" FontSize="22" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource CardBorder}" Padding="16,10" Margin="0,0,10,10" MinWidth="150">
+                <StackPanel>
+                    <TextBlock Text="В среднем за рабочий день" Style="{DynamicResource FieldLabel}"/>
+                    <TextBlock x:Name="AvgText" FontSize="22" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="22,0,22,16">
+                <TextBlock x:Name="EmptyText" Text="За этот период время не записано. Записывайте его из заметки: кнопка «Время» над текстом или Ctrl+T."
+                           Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" Margin="0,20,0,0" Visibility="Collapsed"/>
+                <ItemsControl x:Name="Groups" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{DynamicResource CardBorder}" Padding="18,12">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding TotalText}" HorizontalAlignment="Right" FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentTextBrush}"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,4,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="190"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="100"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Left}" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Main}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Comment}" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap"
+                                                                   Visibility="{Binding CommentVisibility}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding MinutesText}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="0,1,0,0" Padding="22,12">
+            <Grid>
+                <TextBlock x:Name="StatusText" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{DynamicResource AccentButton}" Height="36" Click="Export_Click" ToolTip="Таблица откроется в Excel">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                            <TextBlock Text="Сохранить для Excel"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{DynamicResource SecondaryButton}" Height="36" Margin="8,0,0,0" Content="Скопировать текстом" Click="Copy_Click"/>
+                    <Button Style="{DynamicResource SecondaryButton}" Height="36" Margin="8,0,0,0" Content="Закрыть" Click="Close_Click" IsCancel="True"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -13,6 +13,8 @@ namespace YellowBlackEditor.Utils
     {
         public const string FileName = "client.json";
         public const string ProjectsFileName = "projects.json";
+        public const string SoftwareFileName = "software.json";
+        public const string ContractsFileName = "contracts.json";
 
         private static readonly JsonSerializerOptions Options = new()
         {
@@ -22,6 +24,38 @@ namespace YellowBlackEditor.Utils
 
         public static string CardPath(string folder) => Path.Combine(folder, FileName);
         public static string ProjectsPath(string folder) => Path.Combine(folder, ProjectsFileName);
+        public static string SoftwarePath(string folder) => Path.Combine(folder, SoftwareFileName);
+        public static string ContractsPath(string folder) => Path.Combine(folder, ContractsFileName);
+
+        public static ClientContracts ReadContracts(string folder)
+        {
+            var path = ContractsPath(folder);
+            foreach (var p in new[] { path, path + ".bak" })
+            {
+                try
+                {
+                    if (File.Exists(p))
+                        return JsonSerializer.Deserialize<ClientContracts>(File.ReadAllText(p), Options) ?? new();
+                }
+                catch { }
+            }
+            return new();
+        }
+
+        public static List<ClientSoftware> ReadSoftware(string folder)
+        {
+            var path = SoftwarePath(folder);
+            foreach (var p in new[] { path, path + ".bak" })
+            {
+                try
+                {
+                    if (File.Exists(p))
+                        return JsonSerializer.Deserialize<List<ClientSoftware>>(File.ReadAllText(p), Options) ?? new();
+                }
+                catch { }
+            }
+            return new();
+        }
 
         public static bool IsClientFolder(string folder) => File.Exists(CardPath(folder));
 
@@ -69,6 +103,8 @@ namespace YellowBlackEditor.Utils
                 if (doc.RootElement.TryGetProperty("Projects", out var legacy) && legacy.ValueKind == JsonValueKind.Array)
                     card.Projects = JsonSerializer.Deserialize<ObservableCollection<ClientProject>>(legacy.GetRawText(), Options) ?? new();
             }
+            card.Software = new ObservableCollection<ClientSoftware>(ReadSoftware(folder));
+            card.Contracts = ReadContracts(folder);
             return card;
         }
 
@@ -140,6 +176,22 @@ namespace YellowBlackEditor.Utils
             var cardJson = JsonSerializer.Serialize(card, Options);
             if (!File.Exists(cardPath) || File.ReadAllText(cardPath) != cardJson)
                 WriteAtomic(cardPath, cardJson);
+
+            var contractsPath = ContractsPath(folder);
+            if (!card.Contracts.IsEmpty || File.Exists(contractsPath))
+            {
+                var contractsJson = JsonSerializer.Serialize(card.Contracts, Options);
+                if (!File.Exists(contractsPath) || File.ReadAllText(contractsPath) != contractsJson)
+                    WriteAtomic(contractsPath, contractsJson);
+            }
+
+            var softwarePath = SoftwarePath(folder);
+            if (card.Software.Count > 0 || File.Exists(softwarePath))
+            {
+                var softwareJson = JsonSerializer.Serialize(card.Software, Options);
+                if (!File.Exists(softwarePath) || File.ReadAllText(softwarePath) != softwareJson)
+                    WriteAtomic(softwarePath, softwareJson);
+            }
 
             var projectsPath = ProjectsPath(folder);
             if (card.Projects.Count == 0 && !File.Exists(projectsPath)) return;

@@ -1,0 +1,151 @@
+<UserControl x:Class="YellowBlackEditor.Views.TodayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{DynamicResource TextBrush}">
+    <UserControl.Resources>
+        <Style x:Key="Tile" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush1}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Margin" Value="10,0,0,0"/>
+            <Setter Property="MinWidth" Value="140"/>
+        </Style>
+        <Style x:Key="CardHead" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="Empty" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,2,0,2"/>
+        </Style>
+        <DataTemplate x:Key="ItemTemplate">
+            <Button Click="Item_Click" Margin="-8,0,-8,2" HorizontalContentAlignment="Stretch" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6" Padding="8,7">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="18"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Ellipse x:Name="dot" Width="8" Height="8" Fill="{DynamicResource BorderBrush1}" VerticalAlignment="Top" Margin="0,6,0,0" HorizontalAlignment="Left"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Sub}" Foreground="{DynamicResource SubTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <TextBlock x:Name="right" Grid.Column="2" Text="{Binding Right}" Foreground="{DynamicResource SubTextBrush}" FontSize="12"
+                               VerticalAlignment="Top" Margin="12,2,0,0"/>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="1">
+                    <Setter TargetName="dot" Property="Fill" Value="{DynamicResource AccentBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="2">
+                    <Setter TargetName="dot" Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                    <Setter TargetName="right" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,24" MaxWidth="1120">
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="DateTitle" FontSize="24" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="SummaryText" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Style="{StaticResource Tile}">
+                        <StackPanel>
+                            <TextBlock Text="Учтено сегодня" Style="{DynamicResource FieldLabel}"/>
+                            <TextBlock x:Name="TodayMinutes" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Tile}">
+                        <StackPanel>
+                            <TextBlock Text="За неделю" Style="{DynamicResource FieldLabel}"/>
+                            <TextBlock x:Name="WeekMinutes" FontSize="20" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{DynamicResource SecondaryButton}" Height="40" Margin="10,0,0,0" Click="Report_Click" ToolTip="Трудозатраты за неделю или месяц, выгрузка в Excel">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                            <TextBlock Text="Отчёт по времени"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <Border Style="{DynamicResource CardBorder}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Напоминания" Style="{StaticResource CardHead}"/>
+                                <TextBlock x:Name="RemindersCount" HorizontalAlignment="Right" Foreground="{DynamicResource SubTextBrush}"/>
+                            </Grid>
+                            <TextBlock x:Name="RemindersEmpty" Text="На сегодня напоминаний нет." Style="{StaticResource Empty}"/>
+                            <ItemsControl x:Name="RemindersList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{DynamicResource CardBorder}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Проекты со сроком на неделе" Style="{StaticResource CardHead}"/>
+                                <TextBlock x:Name="ProjectsCount" HorizontalAlignment="Right" Foreground="{DynamicResource SubTextBrush}"/>
+                            </Grid>
+                            <TextBlock x:Name="ProjectsEmpty" Text="Ни у одного проекта срок не подходит." Style="{StaticResource Empty}"/>
+                            <ItemsControl x:Name="ProjectsList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <Border Style="{DynamicResource CardBorder}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Подписки и лицензии" Style="{StaticResource CardHead}"/>
+                                <TextBlock x:Name="SubsCount" HorizontalAlignment="Right" Foreground="{DynamicResource SubTextBrush}"/>
+                            </Grid>
+                            <TextBlock x:Name="SubsEmpty" Text="В ближайший месяц ничего не заканчивается. Сроки ИТС, ОФД, ФН и ЭЦП заводятся в карточке клиента на вкладке «ПО и подписки»." Style="{StaticResource Empty}"/>
+                            <ItemsControl x:Name="SubsList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{DynamicResource CardBorder}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Время сегодня" Style="{StaticResource CardHead}"/>
+                                <TextBlock x:Name="TimeCount" HorizontalAlignment="Right" Foreground="{DynamicResource SubTextBrush}"/>
+                            </Grid>
+                            <TextBlock x:Name="TimeEmpty" Text="Сегодня время ещё не записано. В заметке нажмите Ctrl+T или кнопку «Время» над текстом." Style="{StaticResource Empty}"/>
+                            <ItemsControl x:Name="TimeList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -9,6 +9,7 @@ namespace YellowBlackEditor.Models
         ProjectGroup,
         Project,
         SharedGroup,
-        SharedProject
+        SharedProject,
+        Today
     }
 }

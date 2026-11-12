@@ -69,6 +69,9 @@
 
                     <Border Width="1" Height="24" Background="{DynamicResource BorderBrush1}" Margin="12,0"/>
 
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE9D2;" FontSize="16" Width="36" Height="36" Margin="0,0,8,0"
+                            Click="TimeReport_Click" ToolTip="Отчёт по времени: трудозатраты за неделю или месяц"/>
+
                     <Button x:Name="SyncNowBtn" Style="{DynamicResource SecondaryButton}" Height="36" Margin="0,0,8,0" Click="SyncNowButton_Click"
                             ToolTip="Обменяться клиентами с общей папкой сейчас">
                         <StackPanel Orientation="Horizontal">
@@ -235,7 +238,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid Margin="28,18,20,6">
+                <Grid x:Name="HeaderBar" Margin="28,18,20,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -250,6 +253,13 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                         <Button x:Name="RenameBtn" Style="{DynamicResource IconButton}" Content="&#xE70F;" Margin="6,0,0,0"
                                 Click="RenameCurrent_Click" ToolTip="Переименовать (F2)"/>
+                        <Button x:Name="NoteTimeBtn" Style="{DynamicResource TextButton}" Height="34" Margin="4,0,0,0" Visibility="Collapsed"
+                                Click="NoteTime_Click" ToolTip="Записать, сколько времени ушло (Ctrl+T)">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE916;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                <TextBlock x:Name="NoteTimeText" Text="Время" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="NoteReminderBtn" Style="{DynamicResource TextButton}" Height="34" Margin="4,0,0,0" Visibility="Collapsed"
                                 Click="NoteReminder_Click" ToolTip="Напомнить об этой заметке">
                             <StackPanel Orientation="Horizontal">
@@ -290,6 +300,7 @@
 
                 <views:ClientCardView x:Name="ClientView" Grid.Row="1" Visibility="Collapsed"/>
                 <views:SharedProjectView x:Name="SharedView" Grid.Row="1" Visibility="Collapsed"/>
+                <views:TodayView x:Name="TodayPanel" Grid.Row="1" Visibility="Collapsed"/>
             </Grid>
         </Grid>
     </DockPanel>

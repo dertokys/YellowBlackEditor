@@ -104,6 +104,7 @@ namespace YellowBlackEditor
             ClientView.AddNoteRequested += () => { if (_currentClientNode != null) AddDocumentUnder(_currentClientNode); };
             ClientView.OpenNoteRequested += n => SelectNode(n);
             InitShared();
+            InitToday();
 
             _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); SaveAll(); };
@@ -339,8 +340,10 @@ namespace YellowBlackEditor
             RootNodes.Clear();
             _projectsGroup.IsSelected = false;
             _sharedGroup.IsSelected = false;
+            _todayNode.IsSelected = false;
             _contentCache.Clear();
             if (!Directory.Exists(_workspacePath)) return;
+            EnsureTodayNode();
 
             foreach (var sectionDir in Directory.GetDirectories(_workspacePath).OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
             {
@@ -351,6 +354,7 @@ namespace YellowBlackEditor
                 RootNodes.Add(sectionNode);
             }
             LoadClientProjects();
+            LoadClientSoftware();
             RefreshSharedGroup();
             WarmSearchCache();
         }
@@ -419,6 +423,11 @@ namespace YellowBlackEditor
 
         private void ExpandAndSelectFirstDocument()
         {
+            if (RootNodes.Contains(_todayNode))
+            {
+                SelectNode(_todayNode);
+                return;
+            }
             var first = Flatten(RootNodes).FirstOrDefault(n => n.Type is NodeType.Document or NodeType.Client);
             if (first != null) SelectNode(first);
         }
@@ -551,16 +560,19 @@ namespace YellowBlackEditor
             _currentClientNode = null;
             DetachCurrentClient();
             HideShared();
+            HideToday();
             _isDirty = false;
             _clientDirty = false;
 
             if (node?.Type == NodeType.Document) LoadDocument(node);
             else if (node?.Type == NodeType.Client) LoadClient(node);
             else if (node?.Type == NodeType.SharedProject) ShowShared(node);
+            else if (node?.Type == NodeType.Today) ShowToday();
             else ShowEmpty(node);
 
             UpdateTitle();
             UpdateNoteReminderButton();
+            UpdateTimeButton();
         }
 
         private NodeViewModel? _emptyStateNode;
@@ -605,7 +617,7 @@ namespace YellowBlackEditor
                     ShowAttachmentPreview(node.FullPath);
                     break;
                 default:
-                    EmptyStateText.Text = RootNodes.Count == 0
+                    EmptyStateText.Text = RootNodes.All(n => n.IsVirtual)
                         ? "Здесь пока пусто. Создайте раздел или клиента кнопками сверху."
                         : "Выберите заметку или клиента слева.";
                     break;
@@ -724,6 +736,7 @@ namespace YellowBlackEditor
                 RenameBtn.Visibility = Visibility.Visible;
                 _emptyStateNode = null;
                 ClientView.Show(node, card, ClientRemindersFor(node, card));
+                ClientView.ShowTime(TimeStore.ScanFolder(_workspacePath, node.FullPath));
 
                 CurrentKindText.Text = "Клиент";
                 CurrentFileText.Text = node.Name;
@@ -885,6 +898,7 @@ namespace YellowBlackEditor
                 ClientStore.Save(_currentClientNode.FullPath, _currentClient);
                 _clientDirty = false;
                 UpdateClientProjects(_currentClientNode, _currentClient.Projects);
+                UpdateClientSoftware(_currentClientNode, _currentClient.Software);
                 if (_currentClient.Projects.Any(p => p.SharedId != null && SharedProjects.Hash(p) != p.SharedHash)) SyncSoon();
                 _contentCache.Remove(_currentClientNode.FullPath);
                 MarkSaved();
@@ -1726,7 +1740,7 @@ namespace YellowBlackEditor
             if (items.Count > 0 && !present)
             {
                 _projectsGroup.IsSelected = false;
-                RootNodes.Insert(0, _projectsGroup);
+                RootNodes.Insert(VirtualIndex(_projectsGroup), _projectsGroup);
             }
             else if (items.Count == 0 && present) RootNodes.Remove(_projectsGroup);
 

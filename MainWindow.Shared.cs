@@ -88,6 +88,7 @@ namespace YellowBlackEditor
 
         private void ApplyShared(List<SharedProject> remote, string exchange)
         {
+            NotifySharedChanges(remote);
             _shared = remote;
             var byId = remote.ToDictionary(p => p.Id);
             var me = AppSettings.UserId;
@@ -202,7 +203,7 @@ namespace YellowBlackEditor
             if (show && !present)
             {
                 _sharedGroup.IsSelected = false;
-                RootNodes.Insert(RootNodes.Contains(_projectsGroup) ? 1 : 0, _sharedGroup);
+                RootNodes.Insert(VirtualIndex(_sharedGroup), _sharedGroup);
             }
             else if (!show && present) RootNodes.Remove(_sharedGroup);
 

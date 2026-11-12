@@ -16,6 +16,12 @@ namespace YellowBlackEditor.Utils
     public sealed class FolderSync
     {
         public const string TrashFolderName = "_Удалённые";
+        private const string ClientFile = "client.json";
+        private const string ContractsFile = "contracts.json";
+
+        private static bool IsClientFile(string rel) => Path.GetFileName(rel).Equals(ClientFile, StringComparison.OrdinalIgnoreCase);
+
+        private static string ClientFileFor(string rel) => Path.Combine(Path.GetDirectoryName(rel) ?? "", ClientFile);
         private const string RemoteSubfolder = "Клиенты";
         private static readonly TimeSpan Tolerance = TimeSpan.FromSeconds(2);
 
@@ -59,6 +65,7 @@ namespace YellowBlackEditor.Utils
 
             foreach (var rel in local.Keys.Union(remote.Keys, StringComparer.OrdinalIgnoreCase))
             {
+                if (!IsClientFile(rel) && !local.ContainsKey(ClientFileFor(rel)) && !remote.ContainsKey(ClientFileFor(rel))) continue;
                 local.TryGetValue(rel, out var l);
                 remote.TryGetValue(rel, out var r);
                 state.TryGetValue(rel, out var s);
@@ -103,9 +110,10 @@ namespace YellowBlackEditor.Utils
                 {
                     if (s != null && Same(l.LastWriteTimeUtc.Ticks, s.L))
                     {
-                        FileSystem.DeleteFile(lPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                        if (File.Exists(lPath))
+                            FileSystem.DeleteFile(lPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                         var clientDir = Path.GetDirectoryName(lPath)!;
-                        if (Directory.Exists(clientDir) && !Directory.EnumerateDirectories(clientDir).Any())
+                        if (IsClientFile(rel) && Directory.Exists(clientDir) && !Directory.EnumerateDirectories(clientDir).Any())
                             FileSystem.DeleteDirectory(clientDir, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                         result.LocalChanged.Add(rel);
                         result.StructureChanged = true;
@@ -141,7 +149,7 @@ namespace YellowBlackEditor.Utils
         {
             var parts = rel.Split(Path.DirectorySeparatorChar);
             return parts.Length == 2 &&
-                   parts[1].Equals("client.json", StringComparison.OrdinalIgnoreCase) &&
+                   (parts[1].Equals(ClientFile, StringComparison.OrdinalIgnoreCase) || parts[1].Equals(ContractsFile, StringComparison.OrdinalIgnoreCase)) &&
                    !parts[0].Equals(TrashFolderName, StringComparison.OrdinalIgnoreCase);
         }
 

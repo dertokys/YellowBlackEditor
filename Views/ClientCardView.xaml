@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:m="clr-namespace:YellowBlackEditor.Models"
              xmlns:local="clr-namespace:YellowBlackEditor.Views"
+             xmlns:u="clr-namespace:YellowBlackEditor.Utils"
              Foreground="{DynamicResource TextBrush}">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -11,6 +12,16 @@
             <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="Margin" Value="0,2,0,8"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="StatTile" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush1}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="MinWidth" Value="130"/>
         </Style>
 
         <Style x:Key="ItemCard" TargetType="Border">
@@ -174,6 +185,78 @@
                                  Tag="Режим работы, особенности, договорённости"/>
                     </StackPanel>
                 </Grid>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem x:Name="ContractsTab">
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Договоры"/>
+                    <TextBlock x:Name="ContractsCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock Style="{StaticResource EmptyHint}" Margin="0,2,0,12"
+                               Text="Договоры видят все коллеги, у кого настроен обмен: они уходят в общую папку вместе с реквизитами."/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource ItemCard}" DataContext="{Binding Contracts.Spo}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="СПО" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <ToggleButton Style="{DynamicResource AccentToggle}" Height="34" Width="76" Margin="0,0,6,0" Content="Есть"
+                                                  IsChecked="{Binding Has}" ToolTip="Договор СПО заключён"/>
+                                    <ToggleButton Style="{DynamicResource AccentToggle}" Height="34" Width="76" Margin="0" Content="Нет"
+                                                  IsChecked="{Binding NoContract}" ToolTip="Договора СПО нет"/>
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel x:Name="SpoDetails">
+                                <TextBlock Text="Часов по договору" Style="{DynamicResource FieldLabel}"/>
+                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Hours, UpdateSourceTrigger=PropertyChanged}" Tag="например 8 в месяц"/>
+                                <TextBlock x:Name="SpoUsage" Foreground="{DynamicResource SubTextBrush}" FontSize="12" Margin="2,6,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Text="Номер, срок, условия" Style="{DynamicResource FieldLabel}" Margin="2,12,0,5"/>
+                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                                         MinHeight="38" VerticalContentAlignment="Top" Padding="10,9" Tag="№ 15 от 01.02.2026, до 31.12.2026"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource ItemCard}" DataContext="{Binding Contracts.Ko}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="КО" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <ToggleButton Style="{DynamicResource AccentToggle}" Height="34" Width="76" Margin="0,0,6,0" Content="Есть"
+                                                  IsChecked="{Binding Has}" ToolTip="Договор КО заключён"/>
+                                    <ToggleButton Style="{DynamicResource AccentToggle}" Height="34" Width="76" Margin="0" Content="Нет"
+                                                  IsChecked="{Binding NoContract}" ToolTip="Договора КО нет"/>
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel x:Name="KoDetails">
+                                <TextBlock Text="Часов по договору" Style="{DynamicResource FieldLabel}"/>
+                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Hours, UpdateSourceTrigger=PropertyChanged}" Tag="например 8 в месяц"/>
+                                <TextBlock x:Name="KoUsage" Foreground="{DynamicResource SubTextBrush}" FontSize="12" Margin="2,6,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Text="Номер, срок, условия" Style="{DynamicResource FieldLabel}" Margin="2,12,0,5"/>
+                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                                         MinHeight="38" VerticalContentAlignment="Top" Padding="10,9" Tag="№ 15 от 01.02.2026, до 31.12.2026"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    </Grid>
+                </StackPanel>
             </ScrollViewer>
         </TabItem>
 
@@ -478,6 +561,117 @@
             </ScrollViewer>
         </TabItem>
 
+        <TabItem x:Name="SoftwareTab">
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="ПО и подписки"/>
+                    <TextBlock x:Name="SoftwareCount" Margin="7,0,0,0" Opacity="0.6"/>
+                    <Border x:Name="SoftwareAlert" Width="7" Height="7" CornerRadius="4" Background="{DynamicResource DangerBrush}" Margin="6,1,0,0"
+                            VerticalAlignment="Center" Visibility="Collapsed" ToolTip="Есть подписки, которые скоро закончатся или уже закончились"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="SoftwareEmpty" Style="{StaticResource EmptyHint}"
+                               Text="Какие программы стоят у клиента: 1С, Frontol, iiko. К каждой можно добавить подписки и лицензии со сроком: ИТС, ОФД, ФН, ЭЦП. Что скоро закончится, будет видно на странице «Сегодня»."/>
+                    <ItemsControl x:Name="SoftwareList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type m:ClientSoftware}">
+                                <Border Style="{StaticResource ItemCard}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Программа" Style="{DynamicResource FieldLabel}"/>
+                                                <local:SuggestBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"
+                                                                  Suggestions="{x:Static u:SoftwareCatalog.Programs}" Placeholder="Розница 3.0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Версия, рег. номер, где стоит" Style="{DynamicResource FieldLabel}"/>
+                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" Tag="3.0.150, рег. номер 800123456, сервер в офисе"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="3" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить программу"
+                                                    Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveSoftware_Click"/>
+                                        </Grid>
+                                        <TextBlock Text="Дополнения, лицензии и подписки" Style="{DynamicResource FieldLabel}" Margin="2,14,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding Addons}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type m:SoftwareAddon}">
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" MinWidth="140"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="150"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="130"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="150"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="140"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <local:SuggestBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                          Suggestions="{x:Static u:SoftwareCatalog.Addons}" Placeholder="ИТС ПРОФ"/>
+                                                        <Button Grid.Column="2" Style="{DynamicResource FieldButton}" Click="AddonActivated_Click" ToolTip="Когда активировали">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="&#xE787;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"
+                                                                           Foreground="{DynamicResource SubTextBrush}"/>
+                                                                <TextBlock Text="{Binding ActivatedText}"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <ComboBox Grid.Column="4" Style="{DynamicResource AccentCombo}" Margin="0" Height="38"
+                                                                  ItemsSource="{x:Static m:SoftwareAddon.Terms}" SelectedItem="{Binding Term}"
+                                                                  ToolTip="Срок действия: дата окончания посчитается от даты активации"/>
+                                                        <Button Grid.Column="6" Style="{DynamicResource FieldButton}" Click="AddonEnds_Click" ToolTip="Когда заканчивается">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"
+                                                                           Foreground="{DynamicResource SubTextBrush}"/>
+                                                                <TextBlock Text="{Binding EndsText}"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Border x:Name="chip" Grid.Column="8" CornerRadius="10" Padding="10,3" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                Background="{DynamicResource PanelBrush2}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1">
+                                                            <TextBlock x:Name="chipText" Text="{Binding StateText}" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
+                                                        </Border>
+                                                        <Button Grid.Column="9" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить"
+                                                                Click="RemoveAddon_Click" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding State}" Value="0">
+                                                            <Setter TargetName="chip" Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding State}" Value="2">
+                                                            <Setter TargetName="chip" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                                            <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                            <Setter TargetName="chipText" Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                            <Setter TargetName="chipText" Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding State}" Value="3">
+                                                            <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                                            <Setter TargetName="chipText" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                            <Setter TargetName="chipText" Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить подписку или лицензию" HorizontalAlignment="Left" Margin="-10,0,0,0"
+                                                Click="AddAddon_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить программу" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddSoftware_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
         <TabItem x:Name="ProjectsTab">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
@@ -675,6 +869,81 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Button Style="{DynamicResource TextButton}" Content="+ Добавить заметку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddNote_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem x:Name="TimeTab">
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Время"/>
+                    <TextBlock x:Name="TimeCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource StatTile}">
+                            <StackPanel>
+                                <TextBlock Text="За эту неделю" Style="{DynamicResource FieldLabel}"/>
+                                <TextBlock x:Name="TimeWeek" FontSize="20" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource StatTile}">
+                            <StackPanel>
+                                <TextBlock Text="За этот месяц" Style="{DynamicResource FieldLabel}"/>
+                                <TextBlock x:Name="TimeMonth" FontSize="20" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource StatTile}">
+                            <StackPanel>
+                                <TextBlock Text="Всего" Style="{DynamicResource FieldLabel}"/>
+                                <TextBlock x:Name="TimeAll" FontSize="20" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Grid.Column="4" Style="{DynamicResource AccentButton}" Height="36" VerticalAlignment="Center" Click="AddTime_Click"
+                                ToolTip="Записать время по клиенту без заметки">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE916;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                <TextBlock Text="Записать время"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <TextBlock x:Name="TimeEmpty" Style="{StaticResource EmptyHint}"
+                               Text="Сколько времени ушло на клиента. Удобнее записывать прямо из заметки: кнопка «Время» над текстом или Ctrl+T."/>
+                    <ItemsControl x:Name="TimeList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
+                                        CornerRadius="6" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding DateText}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Comment}" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding HasComment, Converter={StaticResource BoolToVis}}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding MinutesText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0"/>
+                                        <Button Grid.Column="3" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить запись"
+                                                Click="RemoveTime_Click" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

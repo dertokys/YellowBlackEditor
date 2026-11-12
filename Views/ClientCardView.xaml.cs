@@ -23,6 +23,10 @@ namespace YellowBlackEditor.Views
         public event Action<ClientProject>? ShareProjectRequested;
         public event Action<ClientProject>? OpenSharedRequested;
         public event Action<ClientProject>? ProjectRemoved;
+        public event Action? AddTimeRequested;
+        public event Action<TimeRow>? DeleteTimeRequested;
+
+        public sealed record TimeItem(TimeRow Row, string DateText, string Title, string Comment, bool HasComment, string MinutesText);
 
         private NodeViewModel? _node;
         private ClientCard? _card;
@@ -48,6 +52,7 @@ namespace YellowBlackEditor.Views
             projects.SortDescriptions.Add(new SortDescription(nameof(ClientProject.IsClosed), ListSortDirection.Ascending));
             projects.LiveSortingProperties.Add(nameof(ClientProject.IsClosed));
             ProjectsList.ItemsSource = projects;
+            SoftwareList.ItemsSource = card.Software;
 
             var rem = new ListCollectionView(reminders) { IsLiveSorting = true };
             rem.SortDescriptions.Add(new SortDescription(nameof(Reminder.Done), ListSortDirection.Ascending));
@@ -78,6 +83,8 @@ namespace YellowBlackEditor.Views
             DataContext = null;
             NotesList.ItemsSource = null;
             ProjectsList.ItemsSource = null;
+            SoftwareList.ItemsSource = null;
+            TimeList.ItemsSource = null;
             RemindersList.ItemsSource = null;
         }
 
@@ -113,6 +120,17 @@ namespace YellowBlackEditor.Views
             SetCount(PointsCount, _card.Accesses.Count);
             SetCount(CredentialsCount, _card.Credentials.Count);
             SetCount(ProjectsCount, _card.Projects.Count(p => !p.IsClosed));
+            SetCount(SoftwareCount, _card.Software.Count);
+            var active = new List<string>();
+            if (_card.Contracts.Spo.Has) active.Add("СПО");
+            if (_card.Contracts.Ko.Has) active.Add("КО");
+            ContractsCount.Text = string.Join(", ", active);
+            ContractsCount.Visibility = active.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            SpoDetails.Opacity = _card.Contracts.Spo.Has ? 1 : 0.5;
+            KoDetails.Opacity = _card.Contracts.Ko.Has ? 1 : 0.5;
+            UpdateContractUsage();
+            SoftwareAlert.Visibility = _card.Software.SelectMany(s => s.Addons).Any(a => a.State >= 2) ? Visibility.Visible : Visibility.Collapsed;
+            SoftwareEmpty.Visibility = _card.Software.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SetCount(RemindersCount, _reminders?.Count(r => !r.Done) ?? 0);
 
             ContactsEmpty.Visibility = _card.Contacts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -159,6 +177,104 @@ namespace YellowBlackEditor.Views
             {
                 return "";
             }
+        }
+
+        public void ShowSoftware() => Tabs.SelectedItem = SoftwareTab;
+
+        private int _monthMinutes;
+
+        private void UpdateContractUsage()
+        {
+            if (_card == null) return;
+            var used = TimeText.Human(_monthMinutes);
+            string Text(ContractTerm t) => !t.Has
+                ? ""
+                : t.HoursValue is { } h
+                    ? $"В этом месяце вы учли {used} из {h:0.#} ч"
+                    : _monthMinutes > 0 ? $"В этом месяце вы учли {used}" : "";
+            SpoUsage.Text = Text(_card.Contracts.Spo);
+            KoUsage.Text = Text(_card.Contracts.Ko);
+        }
+
+        public void ShowTimeTab() => Tabs.SelectedItem = TimeTab;
+
+        public void ShowTime(IEnumerable<TimeRow> rows)
+        {
+            var list = rows.OrderByDescending(r => r.Entry.Date).ThenByDescending(r => r.Entry.CreatedAt).ToList();
+            TimeList.ItemsSource = list.Select(r => new TimeItem(r,
+                DateText.HumanDate(r.Entry.Date),
+                r.Note.Length > 0 ? r.Note : "По клиенту",
+                r.Entry.Comment,
+                !string.IsNullOrWhiteSpace(r.Entry.Comment),
+                TimeText.Human(r.Entry.Minutes))).ToList();
+            TimeEmpty.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            var today = DateTime.Today;
+            var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var all = list.Sum(r => r.Entry.Minutes);
+            TimeWeek.Text = TimeText.Human(list.Where(r => r.Entry.Date >= weekStart).Sum(r => r.Entry.Minutes));
+            TimeMonth.Text = TimeText.Human(list.Where(r => r.Entry.Date >= monthStart).Sum(r => r.Entry.Minutes));
+            TimeAll.Text = TimeText.Human(all);
+            _monthMinutes = list.Where(r => r.Entry.Date >= monthStart).Sum(r => r.Entry.Minutes);
+            UpdateContractUsage();
+            TimeCount.Text = all > 0 ? TimeText.Human(all) : "";
+            TimeCount.Visibility = all > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void AddTime_Click(object sender, RoutedEventArgs e) => AddTimeRequested?.Invoke();
+
+        private void RemoveTime_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<TimeItem>(sender) is not { } item) return;
+            if (!ConfirmDelete($"Удалить запись «{item.MinutesText}, {item.DateText}»?")) return;
+            DeleteTimeRequested?.Invoke(item.Row);
+        }
+
+        private void AddSoftware_Click(object sender, RoutedEventArgs e)
+        {
+            if (_card == null) return;
+            var s = new ClientSoftware();
+            _card.Software.Add(s);
+            FocusBoxFor(s);
+        }
+
+        private void RemoveSoftware_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientSoftware>(sender) is not { } s || _card == null) return;
+            var empty = string.IsNullOrWhiteSpace(s.Name) && string.IsNullOrWhiteSpace(s.Note) && s.Addons.Count == 0;
+            if (empty || ConfirmDelete($"Удалить «{(string.IsNullOrWhiteSpace(s.Name) ? "программу без названия" : s.Name)}»?", "Подписки и лицензии этой программы тоже удалятся."))
+                _card.Software.Remove(s);
+        }
+
+        private void AddAddon_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientSoftware>(sender) is not { } s) return;
+            var a = new SoftwareAddon { Activated = DateTime.Today };
+            s.Addons.Add(a);
+            FocusBoxFor(a);
+        }
+
+        private void RemoveAddon_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<SoftwareAddon>(sender) is not { } a || _card == null) return;
+            var owner = _card.Software.FirstOrDefault(s => s.Addons.Contains(a));
+            if (owner == null) return;
+            if (!string.IsNullOrWhiteSpace(a.Name) && !ConfirmDelete($"Удалить «{a.Name}»?")) return;
+            owner.Addons.Remove(a);
+        }
+
+        private void AddonActivated_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not SoftwareAddon a) return;
+            ReminderPicker.Open(fe, a.Activated ?? DateTime.Today, null, false, a.Activated != null, (d, _) => a.Activated = d.Date,
+                () => a.Activated = null, dateOnly: true, removeText: "Убрать дату");
+        }
+
+        private void AddonEnds_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not SoftwareAddon a) return;
+            ReminderPicker.Open(fe, a.Ends ?? (a.Activated ?? DateTime.Today).AddYears(1), null, false, a.Ends != null, (d, _) => a.SetEndsManually(d.Date),
+                () => a.SetEndsManually(null), dateOnly: true, removeText: "Без окончания");
         }
 
         private void ShareProject_Click(object sender, RoutedEventArgs e)
