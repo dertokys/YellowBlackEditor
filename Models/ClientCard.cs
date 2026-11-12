@@ -95,15 +95,17 @@ namespace YellowBlackEditor.Models
         private string _program = "AnyDesk";
         private string _accessId = "";
         private string _password = "";
-        private string _phones = "";
         private string _comment = "";
 
         public string Point { get => _point; set => Set(ref _point, value); }
         public string Program { get => _program; set => Set(ref _program, value); }
         public string AccessId { get => _accessId; set => Set(ref _accessId, value); }
-        public string Phones { get => _phones; set => Set(ref _phones, value); }
         public string Comment { get => _comment; set => Set(ref _comment, value); }
+        public ObservableCollection<ClientContact> People { get; set; } = new();
         public ObservableCollection<Credential> Logins { get; set; } = new();
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Phones { get; set; }
 
         public string Password { get => _password; set => Set(ref _password, value); }
 
@@ -114,7 +116,7 @@ namespace YellowBlackEditor.Models
         public bool PasswordUnreadable { get; set; }
 
         [JsonIgnore]
-        public override IEnumerable<IList> ChildLists => new IList[] { Logins };
+        public override IEnumerable<IList> ChildLists => new IList[] { People, Logins };
     }
 
     public class ClientCard : Observable
@@ -201,11 +203,12 @@ namespace YellowBlackEditor.Models
 
         public string SearchText()
         {
-            var parts = new List<string> { Inn, Kpp, Ogrn, Okpo, Address, Email, Comment };
+            var parts = new List<string> { Inn, Digits(Inn), Kpp, Digits(Kpp), Ogrn, Digits(Ogrn), Okpo, Digits(Okpo), Address, Email, Comment };
             foreach (var c in Contacts) parts.AddRange(new[] { c.Name, c.Phone, Digits(c.Phone), c.Role });
             foreach (var a in Accesses)
             {
-                parts.AddRange(new[] { a.Point, a.Program, a.AccessId, Digits(a.AccessId), a.Phones, Digits(a.Phones), a.Comment });
+                parts.AddRange(new[] { a.Point, a.Program, a.AccessId, Digits(a.AccessId), a.Phones ?? "", Digits(a.Phones ?? ""), a.Comment });
+                foreach (var c in a.People) parts.AddRange(new[] { c.Name, c.Phone, Digits(c.Phone), c.Role });
                 foreach (var l in a.Logins) parts.AddRange(new[] { l.Title, l.Login });
             }
             foreach (var c in Credentials) parts.AddRange(new[] { c.Title, c.Url, c.Login, c.Comment });

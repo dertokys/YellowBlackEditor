@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using YellowBlackEditor.Models;
 
 namespace YellowBlackEditor.Utils
@@ -27,7 +28,7 @@ namespace YellowBlackEditor.Utils
         public static bool NeedsMigration(string folder)
         {
             var raw = File.ReadAllText(CardPath(folder));
-            return raw.Contains("\"Projects\"") || raw.Contains("\"Reminders\"") || raw.Contains("\"ProtectedPassword\"");
+            return raw.Contains("\"Projects\"") || raw.Contains("\"Reminders\"") || raw.Contains("\"ProtectedPassword\"") || raw.Contains("\"Phones\"");
         }
 
         private static ClientCard Read(string folder)
@@ -88,8 +89,32 @@ namespace YellowBlackEditor.Utils
                 a.ProtectedPassword = null;
             }
 
+            foreach (var a in card.Accesses)
+            {
+                if (a.Phones == null) continue;
+                if (a.People.Count == 0) foreach (var c in SplitPhones(a.Phones)) a.People.Add(c);
+                a.Phones = null;
+            }
+
             card.Track();
             return card;
+        }
+
+        private static IEnumerable<ClientContact> SplitPhones(string text)
+        {
+            foreach (var part in Regex.Split(text, @"[,;\r\n]"))
+            {
+                var t = part.Trim();
+                if (t.Length == 0) continue;
+                var m = Regex.Match(t, @"\+?\d[\d\s\-()]{4,}\d");
+                if (!m.Success)
+                {
+                    yield return new ClientContact { Phone = t };
+                    continue;
+                }
+                var name = (t[..m.Index] + " " + t[(m.Index + m.Length)..]).Trim(' ', '-', '–', '—', ':');
+                yield return new ClientContact { Phone = m.Value.Trim(), Name = name };
+            }
         }
 
         public static void Save(string folder, ClientCard card)

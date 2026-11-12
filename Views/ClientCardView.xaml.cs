@@ -302,6 +302,24 @@ namespace YellowBlackEditor.Views
                 _card?.Accesses.Remove(a);
         }
 
+        private void AddPointPhone_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<RemoteAccess>(sender) is not { } a) return;
+            var c = new ClientContact();
+            a.People.Add(c);
+            FocusBoxFor(c);
+        }
+
+        private void RemovePointPhone_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientContact>(sender) is not { } c || _card == null) return;
+            var owner = _card.Accesses.FirstOrDefault(a => a.People.Contains(c));
+            if (owner == null) return;
+            var empty = string.IsNullOrWhiteSpace(c.Name) && string.IsNullOrWhiteSpace(c.Phone) && string.IsNullOrWhiteSpace(c.Role);
+            if (empty || ConfirmDelete($"Удалить телефон «{(string.IsNullOrWhiteSpace(c.Name) ? c.Phone : c.Name)}»?"))
+                owner.People.Remove(c);
+        }
+
         private void AddPointLogin_Click(object sender, RoutedEventArgs e)
         {
             if (Ctx<RemoteAccess>(sender) is not { } a) return;

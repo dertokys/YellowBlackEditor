@@ -347,6 +347,7 @@ namespace YellowBlackEditor
                 LoadChildrenRecursive(sectionNode, sectionDir);
                 RootNodes.Add(sectionNode);
             }
+            WarmSearchCache();
         }
 
         private void LoadChildrenRecursive(NodeViewModel parent, string directory)
@@ -1603,9 +1604,56 @@ namespace YellowBlackEditor
 
             return Cached(node.FullPath, path, () =>
             {
-                var doc = LoadPackage(path, path == xaml ? System.Windows.DataFormats.XamlPackage : System.Windows.DataFormats.Rtf);
+                if (path == rtf) return RtfText.Extract(File.ReadAllText(path));
+                var doc = LoadPackage(path, System.Windows.DataFormats.XamlPackage);
                 return new TextRange(doc.ContentStart, doc.ContentEnd).Text ?? "";
             });
+        }
+
+        private int _warmGeneration;
+
+        private void WarmSearchCache()
+        {
+            var generation = ++_warmGeneration;
+            var items = Flatten(RootNodes)
+                .Where(n => n.Type is NodeType.Client or NodeType.Document)
+                .Select(n => (n.FullPath, n.Type))
+                .ToList();
+
+            Task.Run(() =>
+            {
+                var result = new List<(string Key, DateTime MTime, string Text)>();
+                foreach (var (path, type) in items)
+                {
+                    try
+                    {
+                        if (type == NodeType.Client)
+                        {
+                            var card = ClientStore.CardPath(path);
+                            if (File.Exists(card)) result.Add((path, File.GetLastWriteTimeUtc(card), ClientStore.SearchText(path)));
+                        }
+                        else if (!File.Exists(GetXamlPackPath(path)) && File.Exists(GetRtfPath(path)))
+                        {
+                            var rtf = GetRtfPath(path);
+                            result.Add((path, File.GetLastWriteTimeUtc(rtf), RtfText.Extract(File.ReadAllText(rtf))));
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+                return result;
+            }).ContinueWith(t =>
+            {
+                if (t.IsFaulted) return;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (generation != _warmGeneration) return;
+                    foreach (var (key, mtime, text) in t.Result)
+                        if (!_contentCache.ContainsKey(key))
+                            _contentCache[key] = new ContentCacheEntry { MTimeUtc = mtime, Text = text };
+                }, DispatcherPriority.Background);
+            }, TaskScheduler.Default);
         }
 
         private string Cached(string key, string file, Func<string> read)

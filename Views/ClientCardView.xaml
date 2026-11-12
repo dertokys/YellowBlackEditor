@@ -289,8 +289,6 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="12"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="12"/>
-                                                <ColumnDefinition Width="1.3*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Text="ID" Style="{DynamicResource FieldLabel}"/>
@@ -308,15 +306,34 @@
                                                     <Button Style="{StaticResource CopyButton}" Tag="{Binding Password}" Click="Copy_Click"/>
                                                 </Grid>
                                             </StackPanel>
-                                            <StackPanel Grid.Column="4">
-                                                <TextBlock Text="Телефоны точки" Style="{DynamicResource FieldLabel}"/>
-                                                <Grid>
-                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Phones, UpdateSourceTrigger=PropertyChanged}"
-                                                             Tag="Можно несколько через запятую" Padding="10,0,36,0"/>
-                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding Phones}" Click="Copy_Click"/>
-                                                </Grid>
-                                            </StackPanel>
                                         </Grid>
+
+                                        <TextBlock Text="Телефоны" Style="{DynamicResource FieldLabel}" Margin="2,14,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding People}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type m:ClientContact}">
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="10"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="10"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid>
+                                                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" Tag="Телефон" Padding="10,0,36,0"/>
+                                                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Phone}" Click="Copy_Click"/>
+                                                        </Grid>
+                                                        <TextBox Grid.Column="2" Style="{DynamicResource FieldBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Tag="Имя"/>
+                                                        <TextBox Grid.Column="4" Style="{DynamicResource FieldBox}" Text="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Tag="Должность"/>
+                                                        <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить телефон"
+                                                                Margin="4,0,0,0" Click="RemovePointPhone_Click"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить телефон" HorizontalAlignment="Left" Margin="-10,0,0,0" Click="AddPointPhone_Click"/>
 
                                         <TextBlock Text="Комментарий" Style="{DynamicResource FieldLabel}" Margin="2,12,0,5"/>
                                         <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" Tag="Какой компьютер, кто за ним сидит"/>

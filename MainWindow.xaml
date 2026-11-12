@@ -136,7 +136,7 @@
                     </Grid.RowDefinitions>
 
                     <Grid Margin="0,0,0,8">
-                        <TextBox x:Name="SearchBox" Style="{DynamicResource FieldBox}" Tag="Поиск" ToolTip="Ищет по названиям, тексту заметок и карточкам клиентов: ИНН, телефон, ID. Ctrl+F"
+                        <TextBox x:Name="SearchBox" Style="{DynamicResource FieldBox}" Tag="Поиск: название, ИНН, телефон" ToolTip="Ищет сразу по названиям, тексту заметок и карточкам клиентов: ИНН, КПП, ОГРН, телефон, ID. Ctrl+F"
                                  Padding="10,0,30,0" TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown"/>
                         <Button x:Name="ClearSearchBtn" Style="{DynamicResource IconButton}" Content="&#xE711;" FontSize="11" Width="28" Height="28"
                                 HorizontalAlignment="Right" Margin="0,0,2,0" Click="ClearSearch_Click" ToolTip="Очистить поиск (Esc)" Visibility="Collapsed"/>
