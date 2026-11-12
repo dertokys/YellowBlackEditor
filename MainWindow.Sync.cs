@@ -87,25 +87,43 @@ namespace YellowBlackEditor
             _syncSoonTimer.Start();
         }
 
-        private void SyncNow_Click(object sender, RoutedEventArgs e) => RunSync();
+        private void SyncNow_Click(object sender, RoutedEventArgs e) => RunSync(manual: true);
 
-        private void RunSync()
+        private void SyncNowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_appSettings.SyncEnabled || string.IsNullOrWhiteSpace(_appSettings.SyncFolder))
+            {
+                Status("Сначала укажите папку обмена в настройках");
+                OpenSettings_Click(sender, e);
+                return;
+            }
+            RunSync(manual: true);
+        }
+
+        private void RunSync(bool manual = false)
         {
             if (_syncRunning || !_appSettings.SyncEnabled || string.IsNullOrWhiteSpace(_appSettings.SyncFolder)) return;
             SaveAll(quiet: true);
             _syncRunning = true;
             SyncText.Text = "Обмен…";
+            SyncNowText.Text = "Обмен…";
+            SyncNowBtn.IsEnabled = false;
             var sync = new FolderSync(ClientsRoot, _appSettings.SyncFolder, _appConfigDir);
 
             Task.Run(sync.Run).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
                 _syncRunning = false;
+                SyncNowText.Text = "Обменяться";
+                SyncNowBtn.IsEnabled = true;
                 if (t.Exception != null)
                 {
                     var ex = t.Exception.GetBaseException();
-                    SyncText.Text = ex is DirectoryNotFoundException or IOException ? "Обмен: папка недоступна" : "Обмен: ошибка";
+                    var unavailable = ex is DirectoryNotFoundException or IOException;
+                    SyncText.Text = unavailable ? "Обмен: папка недоступна" : "Обмен: ошибка";
                     SyncBtn.ToolTip = ex.Message;
                     LogError("Обмен через папку", ex);
+                    if (manual)
+                        Status(unavailable ? $"Папка обмена недоступна: {_appSettings.SyncFolder}" : "Обмен не удался: " + ex.Message);
                     return;
                 }
                 var r = t.Result;
@@ -113,6 +131,10 @@ namespace YellowBlackEditor
                 SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
                 if (r.Conflicts > 0)
                     Status($"Обмен: одну заметку меняли двое, оставлена более свежая версия. Вторая сохранена в {Path.Combine(_appConfigDir, "conflicts")}");
+                else if (manual)
+                    Status(r.Uploaded == 0 && r.Downloaded == 0
+                        ? "Обмен завершён: всё уже совпадает"
+                        : $"Обмен завершён: отправлено {r.Uploaded}, получено {r.Downloaded}");
                 else if (r.Downloaded > 0)
                     Status($"Обмен: получено изменений — {r.Downloaded}");
                 ApplySyncChanges(r);

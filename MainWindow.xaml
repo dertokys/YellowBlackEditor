@@ -69,6 +69,14 @@
 
                     <Border Width="1" Height="24" Background="{DynamicResource BorderBrush1}" Margin="12,0"/>
 
+                    <Button x:Name="SyncNowBtn" Style="{DynamicResource SecondaryButton}" Height="36" Margin="0,0,8,0" Click="SyncNowButton_Click"
+                            ToolTip="Обменяться клиентами с общей папкой сейчас">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                            <TextBlock x:Name="SyncNowText" Text="Обменяться" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <Grid>
                         <Button x:Name="BellBtn" Style="{DynamicResource IconButton}" Content="&#xE7ED;" FontSize="16" Width="36" Height="36" Click="ShowReminders_Click" ToolTip="Напоминания"/>
                         <Popup x:Name="RemindersPopup" PlacementTarget="{Binding ElementName=BellBtn}" Placement="Bottom" StaysOpen="True"
