@@ -49,7 +49,21 @@ namespace YellowBlackEditor.Utils
 
             var accentLight = string.IsNullOrWhiteSpace(s.AccentLight) ? Lighten(s.Accent, 0.25) : s.AccentLight;
             SetBrush("AccentBrushLight", accentLight);
-            SetBrush("AccentSoftBrush", Mix(s.Accent, s.Panel, 0.22));
+            SetBrush("AccentSoftBrush", Mix(s.Accent, s.Panel, s.IsLight ? 0.28 : 0.22));
+            SetBrush("AccentTextBrush", s.IsLight ? Mix(s.Accent, "#000000", 0.55) : s.Accent);
+
+            var light = s.IsLight;
+            SetBrush("HoverBorderBrush", light ? "#8E8E8E" : "#7A7A7A");
+            SetBrush("FieldBorderBrush", light ? "#B5B3AD" : "#5E5E5E");
+            SetBrush("FieldBrush", light ? "#FFFFFF" : "#141414");
+            SetBrush("SurfaceHoverBrush", light ? "#EEEDE8" : "#202020");
+            SetBrush("DangerBrush", light ? "#C62828" : "#EF5350");
+            SetBrush("ScrollBarThumbBrush", light ? "#C9C7C1" : "#3C3C3C");
+            SetBrush("ScrollBarThumbHoverBrush", light ? "#A9A7A1" : "#5A5A5A");
+            SetBrush("ScrollBarThumbPressedBrush", light ? "#8F8D88" : "#707070");
+
+            foreach (System.Windows.Window w in System.Windows.Application.Current.Windows)
+                DarkTitleBar.Apply(w);
         }
 
         private static string Mix(string fgHex, string bgHex, double ratio)

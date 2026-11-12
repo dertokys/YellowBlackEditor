@@ -158,6 +158,15 @@ namespace YellowBlackEditor.Views
             }
         }
 
+        public void ShowProject(int index)
+        {
+            if (_card == null || index < 0 || index >= _card.Projects.Count) return;
+            var p = _card.Projects[index];
+            p.IsExpanded = true;
+            Tabs.SelectedItem = ProjectsTab;
+            FocusBoxFor(p);
+        }
+
         public void FocusFirstField()
         {
             Tabs.SelectedIndex = 0;

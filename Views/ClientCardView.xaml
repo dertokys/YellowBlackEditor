@@ -36,7 +36,7 @@
                                 <TextBlock x:Name="copy" Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="14"
                                            Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="done" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="14" Visibility="Collapsed"
-                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                           Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -416,7 +416,7 @@
                                                             <Button Click="OpenLink_Click" HorizontalAlignment="Left" Margin="10,0,40,0" ToolTip="Открыть в браузере" IsTabStop="False">
                                                                 <Button.Template>
                                                                     <ControlTemplate TargetType="Button">
-                                                                        <TextBlock x:Name="t" Text="{Binding Url}" Foreground="{DynamicResource AccentBrush}" FontSize="14"
+                                                                        <TextBlock x:Name="t" Text="{Binding Url}" Foreground="{DynamicResource AccentTextBrush}" FontSize="14"
                                                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Cursor="Hand"/>
                                                                         <ControlTemplate.Triggers>
                                                                             <Trigger Property="IsMouseOver" Value="True">
@@ -478,7 +478,7 @@
             </ScrollViewer>
         </TabItem>
 
-        <TabItem>
+        <TabItem x:Name="ProjectsTab">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Проекты"/>
@@ -508,7 +508,7 @@
                                             <StackPanel Grid.Column="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="Проект" Style="{DynamicResource FieldLabel}"/>
-                                                    <TextBlock Text="{Binding Progress}" Style="{DynamicResource FieldLabel}" Margin="10,0,0,5" Foreground="{DynamicResource AccentBrush}"/>
+                                                    <TextBlock Text="{Binding Progress}" Style="{DynamicResource FieldLabel}" Margin="10,0,0,5" Foreground="{DynamicResource AccentTextBrush}"/>
                                                 </StackPanel>
                                                 <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"
                                                          Tag="Переход на новую кассу"/>

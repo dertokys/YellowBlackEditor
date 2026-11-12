@@ -5,6 +5,8 @@ namespace YellowBlackEditor.Models
         Section,
         Document,
         Attachment,
-        Client
+        Client,
+        ProjectGroup,
+        Project
     }
 }

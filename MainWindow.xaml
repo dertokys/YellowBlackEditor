@@ -143,7 +143,7 @@
                     </Grid>
 
                     <TreeView x:Name="Tree" Grid.Row="1"
-                              FontSize="15" BorderThickness="0"
+                              FontSize="15" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               ItemsSource="{Binding RootNodes}"
                               SelectedItemChanged="Tree_SelectedItemChanged"
                               PreviewMouseRightButtonDown="Tree_PreviewMouseRightButtonDown"
@@ -183,13 +183,22 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Name="IconTb" Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="14"
                                                    Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock x:Name="NameTb" Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock x:Name="NameTb" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock x:Name="HintTb" Text="{Binding Hint}" TextTrimming="CharacterEllipsis" FontSize="12" Margin="0,1,0,0"
+                                                       Foreground="{DynamicResource SubTextBrush}" Visibility="Collapsed"/>
+                                        </StackPanel>
                                         <TextBlock x:Name="BellTb" Grid.Column="2" Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="8,0,0,0"
-                                                   VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" Visibility="Collapsed" ToolTip="Есть напоминание"/>
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource AccentTextBrush}" Visibility="Collapsed" ToolTip="Есть напоминание"/>
                                     </Grid>
                                 </Border>
                                 <HierarchicalDataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Type}" Value="Project">
+                                        <Setter TargetName="HintTb" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="IconTb" Property="VerticalAlignment" Value="Top"/>
+                                        <Setter TargetName="IconTb" Property="Margin" Value="0,2,0,0"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding ReminderState}" Value="1">
                                         <Setter TargetName="BellTb" Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
@@ -199,12 +208,12 @@
                                         <Setter TargetName="BellTb" Property="ToolTip" Value="Напоминание просрочено"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsHit}" Value="True">
-                                        <Setter TargetName="NameTb" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter TargetName="NameTb" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
                                         <Setter TargetName="SelBd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
                                         <Setter TargetName="NameTb" Property="FontWeight" Value="SemiBold"/>
-                                        <Setter TargetName="IconTb" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter TargetName="IconTb" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                                     </DataTrigger>
                                 </HierarchicalDataTemplate.Triggers>
                             </HierarchicalDataTemplate>

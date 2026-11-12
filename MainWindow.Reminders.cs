@@ -256,7 +256,7 @@ namespace YellowBlackEditor
             }
             var overdue = r.Due <= DateTime.Now;
             NoteReminderText.Text = (overdue ? "Просрочено: " : "Напомню ") + DateText.Human(r.Due.Value);
-            var brush = (System.Windows.Media.Brush)FindResource(overdue ? "DangerBrush" : "AccentBrush");
+            var brush = (System.Windows.Media.Brush)FindResource(overdue ? "DangerBrush" : "AccentTextBrush");
             NoteReminderIcon.Foreground = brush;
             if (overdue) NoteReminderText.Foreground = brush;
             else NoteReminderText.ClearValue(ForegroundProperty);

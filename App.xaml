@@ -10,6 +10,7 @@
         <SolidColorBrush x:Key="SubTextBrush" Color="#BDBDBD"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#FFC107"/>
         <SolidColorBrush x:Key="AccentBrushLight" Color="#FFD54F"/>
+        <SolidColorBrush x:Key="AccentTextBrush" Color="#FFC107"/>
 
         <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="Transparent"/>
         <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#3C3C3C"/>
@@ -199,8 +200,8 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="headerBd" Property="Background" Value="#222222"/>
-                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="headerBd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                             </Trigger>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -407,7 +408,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{DynamicResource BorderBrush1}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBorderBrush}"/>
@@ -478,7 +479,7 @@
 
         <Style x:Key="GhostButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="12,6"/>

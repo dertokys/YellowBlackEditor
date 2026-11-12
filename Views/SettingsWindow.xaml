@@ -17,6 +17,12 @@
 
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="0,0,4,0">
+                    <TextBlock Text="Тема" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                        <ToggleButton x:Name="DarkModeBtn" Style="{DynamicResource AccentToggle}" Height="36" Width="120" Margin="0,0,8,0" Content="Тёмная" Click="DarkMode_Click"/>
+                        <ToggleButton x:Name="LightModeBtn" Style="{DynamicResource AccentToggle}" Height="36" Width="120" Margin="0" Content="Светлая" Click="LightMode_Click"/>
+                    </StackPanel>
+
                     <TextBlock Text="Цвета темы" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
                     <Border x:Name="AccentRow" CornerRadius="6" Padding="6" Margin="0,0,0,8"

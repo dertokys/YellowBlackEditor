@@ -72,6 +72,23 @@ namespace YellowBlackEditor.Utils
             return card;
         }
 
+        public static List<ClientProject> ReadProjects(string folder)
+        {
+            try
+            {
+                var projectsPath = ProjectsPath(folder);
+                if (File.Exists(projectsPath))
+                    return JsonSerializer.Deserialize<List<ClientProject>>(File.ReadAllText(projectsPath), Options) ?? new();
+                var path = CardPath(folder);
+                if (!File.Exists(path)) return new();
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                if (doc.RootElement.TryGetProperty("Projects", out var legacy) && legacy.ValueKind == JsonValueKind.Array)
+                    return JsonSerializer.Deserialize<List<ClientProject>>(legacy.GetRawText(), Options) ?? new();
+            }
+            catch { }
+            return new();
+        }
+
         public static ClientCard Load(string folder)
         {
             var card = Read(folder);

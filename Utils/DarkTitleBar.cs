@@ -15,7 +15,7 @@ namespace YellowBlackEditor.Utils
             {
                 var hwnd = new WindowInteropHelper(window).Handle;
                 if (hwnd == IntPtr.Zero) return;
-                var on = 1;
+                var on = ThemeManager.Current.IsLight ? 0 : 1;
                 if (DwmSetWindowAttribute(hwnd, 20, ref on, sizeof(int)) != 0)
                     DwmSetWindowAttribute(hwnd, 19, ref on, sizeof(int));
             }

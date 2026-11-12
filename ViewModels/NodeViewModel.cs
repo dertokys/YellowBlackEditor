@@ -16,6 +16,10 @@ namespace YellowBlackEditor.ViewModels
 
         public string Name { get => _name; set { _name = value; OnPropertyChanged(); } }
         public string FullPath { get; set; } = "";
+        public string Hint { get; set; } = "";
+        public NodeViewModel? Target { get; set; }
+        public int ProjectIndex { get; set; }
+        public bool IsVirtual => Type is NodeType.ProjectGroup or NodeType.Project;
         public NodeType Type { get; set; }
         public NodeViewModel? Parent { get; set; }
         public ObservableCollection<NodeViewModel> Children { get; } = new();
@@ -31,6 +35,8 @@ namespace YellowBlackEditor.ViewModels
             NodeType.Section => "",
             NodeType.Document => "",
             NodeType.Client => "",
+            NodeType.ProjectGroup => "",
+            NodeType.Project => "",
             _ => ""
         };
 

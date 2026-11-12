@@ -19,6 +19,7 @@ namespace YellowBlackEditor.Views
         private TargetField _active = TargetField.Accent;
 
         private bool _saved;
+        private bool _light;
         private AppSettings _appSettings = new();
         private readonly KeyGestureConverter _conv = new KeyGestureConverter();
 
@@ -37,6 +38,8 @@ namespace YellowBlackEditor.Views
             SyncFolderBox.Text = _appSettings.SyncFolder;
             try { AutostartCheck.IsChecked = AppSettings.StartsWithWindows; } catch { AutostartCheck.IsEnabled = false; }
 
+            _light = ThemeManager.Current.IsLight;
+            UpdateModeButtons();
             AccentBox.Text = ThemeManager.Current.Accent;
             TextBoxColor.Text = ThemeManager.Current.Text;
             PanelBox.Text = ThemeManager.Current.Panel;
@@ -128,11 +131,7 @@ namespace YellowBlackEditor.Views
                 s.Accent = AccentBox.Text.Trim();
                 s.Text = TextBoxColor.Text.Trim();
                 s.Panel = PanelBox.Text.Trim();
-                s.Panel2 = ThemeManager.Current.Panel2;
-                s.Bg = ThemeManager.Current.Bg;
-                s.Border = ThemeManager.Current.Border;
-                s.SubText = ThemeManager.Current.SubText;
-                s.AccentLight = "";
+                CopyPalette(s);
                 ThemeManager.Apply(s);
                 UpdateActiveUi();
             }
@@ -141,6 +140,7 @@ namespace YellowBlackEditor.Views
 
         private static ThemeSettings Clone(ThemeSettings s) => new ThemeSettings
         {
+            Mode = s.Mode,
             Bg = s.Bg,
             Panel = s.Panel,
             Panel2 = s.Panel2,
@@ -155,9 +155,48 @@ namespace YellowBlackEditor.Views
 
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
+            var p = Palette();
             AccentBox.Text = "#FFC107";
-            TextBoxColor.Text = "#F5F5F5";
-            PanelBox.Text = "#151515";
+            TextBoxColor.Text = p.Text;
+            PanelBox.Text = p.Panel;
+            UpdatePreviews();
+            SafePreviewApply();
+        }
+
+        private ThemeSettings Palette()
+        {
+            var p = new ThemeSettings();
+            p.ApplyPalette(_light);
+            return p;
+        }
+
+        private void CopyPalette(ThemeSettings s)
+        {
+            var p = Palette();
+            s.Mode = p.Mode;
+            s.Panel2 = p.Panel2;
+            s.Bg = p.Bg;
+            s.Border = p.Border;
+            s.SubText = p.SubText;
+            s.AccentLight = "";
+        }
+
+        private void UpdateModeButtons()
+        {
+            DarkModeBtn.IsChecked = !_light;
+            LightModeBtn.IsChecked = _light;
+        }
+
+        private void DarkMode_Click(object sender, RoutedEventArgs e) => SetMode(false);
+        private void LightMode_Click(object sender, RoutedEventArgs e) => SetMode(true);
+
+        private void SetMode(bool light)
+        {
+            _light = light;
+            UpdateModeButtons();
+            var p = Palette();
+            TextBoxColor.Text = p.Text;
+            PanelBox.Text = p.Panel;
             UpdatePreviews();
             SafePreviewApply();
         }
@@ -177,11 +216,7 @@ namespace YellowBlackEditor.Views
                 s.Accent = AccentBox.Text.Trim();
                 s.Text = TextBoxColor.Text.Trim();
                 s.Panel = PanelBox.Text.Trim();
-                s.Panel2 = "#111111";
-                s.Bg = "#0E0E0E";
-                s.Border = "#232323";
-                s.SubText = "#BDBDBD";
-                s.AccentLight = "";
+                CopyPalette(s);
                 if (EditorFontBox.SelectedItem is int ef) s.EditorFontSize = ef;
                 if (TreeFontBox.SelectedItem is int tf) s.TreeFontSize = tf;
                 ThemeManager.Apply(s);

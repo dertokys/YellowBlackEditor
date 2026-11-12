@@ -336,6 +336,7 @@ namespace YellowBlackEditor
         private void LoadTree()
         {
             RootNodes.Clear();
+            _projectsGroup.IsSelected = false;
             _contentCache.Clear();
             if (!Directory.Exists(_workspacePath)) return;
 
@@ -347,6 +348,7 @@ namespace YellowBlackEditor
                 LoadChildrenRecursive(sectionNode, sectionDir);
                 RootNodes.Add(sectionNode);
             }
+            LoadClientProjects();
             WarmSearchCache();
         }
 
@@ -453,6 +455,11 @@ namespace YellowBlackEditor
         private void Tree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             var item = FindTreeViewItem(e.OriginalSource as DependencyObject);
+            if (item?.DataContext is NodeViewModel { IsVirtual: true })
+            {
+                e.Handled = true;
+                return;
+            }
             if (item != null)
             {
                 item.IsSelected = true;
@@ -472,6 +479,11 @@ namespace YellowBlackEditor
         private void Tree_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (Tree.SelectedItem is not NodeViewModel node) return;
+            if (node.IsVirtual && e.Key is Key.F2 or Key.Delete)
+            {
+                e.Handled = true;
+                return;
+            }
 
             if (e.Key == Key.F2)
             {
@@ -510,6 +522,11 @@ namespace YellowBlackEditor
         private void OnNodeSelected(NodeViewModel? node)
         {
             if (TryRebind(node)) return;
+            if (node?.Type == NodeType.Project)
+            {
+                OpenProject(node);
+                return;
+            }
             var previous = _currentDocNode ?? _currentClientNode;
             if (_revertingSelection)
             {
@@ -572,6 +589,9 @@ namespace YellowBlackEditor
                         : "Выберите заметку слева или создайте новую.";
                     EmptyStateButton.Visibility = Visibility.Visible;
                     break;
+                case NodeType.ProjectGroup:
+                    EmptyStateText.Text = "Здесь открытые проекты всех клиентов. Нажмите на проект, чтобы открыть его в карточке клиента.";
+                    break;
                 case NodeType.Attachment:
                     EmptyState.Visibility = Visibility.Collapsed;
                     ShowAttachmentPreview(node.FullPath);
@@ -590,7 +610,7 @@ namespace YellowBlackEditor
                 _ => ""
             };
             CurrentFileText.Text = node?.Name ?? "";
-            RenameBtn.Visibility = node == null ? Visibility.Collapsed : Visibility.Visible;
+            RenameBtn.Visibility = node == null || node.IsVirtual ? Visibility.Collapsed : Visibility.Visible;
             DirtyText.Text = "";
         }
 
@@ -753,9 +773,28 @@ namespace YellowBlackEditor
         private static FlowDocument LoadPackage(string path, string format)
         {
             var d = new FlowDocument();
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            new TextRange(d.ContentStart, d.ContentEnd).Load(fs, format);
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                new TextRange(d.ContentStart, d.ContentEnd).Load(fs, format);
+            StripDefaultForeground(d);
             return d;
+        }
+
+        private static void StripDefaultForeground(DependencyObject root)
+        {
+            var current = ThemeManager.Current.Text;
+            bool IsDefault(MediaColor c)
+            {
+                var hex = $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+                return hex is "#F5F5F5" or "#1B1B1B" || current.EndsWith(hex.Substring(1), StringComparison.OrdinalIgnoreCase);
+            }
+            void Walk(DependencyObject o)
+            {
+                if (o.ReadLocalValue(TextElement.ForegroundProperty) is SolidColorBrush b && IsDefault(b.Color))
+                    o.ClearValue(TextElement.ForegroundProperty);
+                foreach (var child in LogicalTreeHelper.GetChildren(o).OfType<DependencyObject>())
+                    Walk(child);
+            }
+            Walk(root);
         }
 
         private FlowDocument LoadFlowDocument(string docFolder)
@@ -837,6 +876,7 @@ namespace YellowBlackEditor
             {
                 ClientStore.Save(_currentClientNode.FullPath, _currentClient);
                 _clientDirty = false;
+                UpdateClientProjects(_currentClientNode, _currentClient.Projects);
                 _contentCache.Remove(_currentClientNode.FullPath);
                 MarkSaved();
                 if (_reminderTimer != null) UpdateBell(CollectReminders());
@@ -1122,6 +1162,11 @@ namespace YellowBlackEditor
         private void Node_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not NodeViewModel node) return;
+            if (node.IsVirtual)
+            {
+                e.Handled = true;
+                return;
+            }
 
             var cm = new System.Windows.Controls.ContextMenu();
             void Add(string header, Action action) => cm.Items.Add(MenuItem(header, (_, _) => action()));
@@ -1211,6 +1256,7 @@ namespace YellowBlackEditor
 
         private void RenameNode(NodeViewModel node)
         {
+            if (node.IsVirtual) return;
             if (node.Type == NodeType.Attachment)
             {
                 RenameAttachment(node);
@@ -1252,6 +1298,7 @@ namespace YellowBlackEditor
                 UpdatePathsRecursively(node, oldDir, newDir);
                 MoveNoteReminders(oldDir, newDir);
                 _contentCache.Clear();
+                RefreshProjectsGroup();
 
                 if (ReferenceEquals(_currentDocNode, node) || ReferenceEquals(_currentClientNode, node) || ReferenceEquals(_emptyStateNode, node))
                     CurrentFileText.Text = node.Name;
@@ -1333,8 +1380,9 @@ namespace YellowBlackEditor
                 if (node.Parent != null) node.Parent.Children.Remove(node);
                 else RootNodes.Remove(node);
                 _contentCache.Clear();
+                RefreshProjectsGroup();
 
-                var next = node.Parent ?? RootNodes.FirstOrDefault();
+                var next = node.Parent ?? RootNodes.FirstOrDefault(n => !n.IsVirtual);
                 if (next != null) SelectNode(next);
                 Status("Удалено в корзину");
             }
@@ -1442,7 +1490,7 @@ namespace YellowBlackEditor
         {
             var selection = Tree.SelectedItem as NodeViewModel;
             if (selection?.Type == NodeType.Attachment) selection = selection.Parent;
-            if (selection == null)
+            if (selection == null || selection.IsVirtual)
             {
                 Status("Выберите слева раздел, клиента или заметку");
                 return;
@@ -1533,6 +1581,7 @@ namespace YellowBlackEditor
 
             if (q.Length == 0)
             {
+                _projectsGroup.IsExpanded = true;
                 if (Tree.SelectedItem is NodeViewModel sel) ExpandParents(sel);
                 return;
             }
@@ -1541,7 +1590,7 @@ namespace YellowBlackEditor
             if (current == null || !current.IsVisible || !current.IsHit)
             {
                 var first = Flatten(RootNodes).FirstOrDefault(n => n.IsHit && n.Type is NodeType.Document or NodeType.Client)
-                            ?? Flatten(RootNodes).FirstOrDefault(n => n.IsHit);
+                            ?? Flatten(RootNodes).FirstOrDefault(n => n.IsHit && !n.IsVirtual);
                 if (first != null) SelectNode(first);
             }
         }
@@ -1559,7 +1608,8 @@ namespace YellowBlackEditor
                 return true;
             }
 
-            var selfHit = Contains(node.Name, q) || (node.Type is NodeType.Document or NodeType.Client && NodeContentContains(node, q));
+            var selfHit = Contains(node.Name, q) || (node.Type == NodeType.Project && Contains(node.Hint, q)) ||
+                          (node.Type is NodeType.Document or NodeType.Client && NodeContentContains(node, q));
             node.IsVisible = selfHit || childHit;
             node.IsHit = selfHit;
             node.IsExpanded = childHit;
@@ -1608,6 +1658,87 @@ namespace YellowBlackEditor
                 var doc = LoadPackage(path, System.Windows.DataFormats.XamlPackage);
                 return new TextRange(doc.ContentStart, doc.ContentEnd).Text ?? "";
             });
+        }
+
+        private const string ProjectsGroupPath = "::projects";
+        private readonly NodeViewModel _projectsGroup = new() { Name = "Проекты", FullPath = ProjectsGroupPath, Type = NodeType.ProjectGroup, IsExpanded = true };
+        private readonly Dictionary<NodeViewModel, List<ClientProject>> _clientProjects = new();
+
+        private void LoadClientProjects()
+        {
+            _clientProjects.Clear();
+            foreach (var client in Flatten(RootNodes).Where(n => n.Type == NodeType.Client).ToList())
+            {
+                var list = ClientStore.ReadProjects(client.FullPath);
+                if (list.Count > 0) _clientProjects[client] = list;
+            }
+            RefreshProjectsGroup();
+        }
+
+        private void UpdateClientProjects(NodeViewModel client, IEnumerable<ClientProject> projects)
+        {
+            var list = projects.ToList();
+            if (list.Count > 0) _clientProjects[client] = list;
+            else _clientProjects.Remove(client);
+            RefreshProjectsGroup();
+        }
+
+        private void RefreshProjectsGroup()
+        {
+            var clients = new HashSet<NodeViewModel>(Flatten(RootNodes.Where(n => !n.IsVirtual)).Where(n => n.Type == NodeType.Client));
+            foreach (var gone in _clientProjects.Keys.Where(k => !clients.Contains(k)).ToList())
+                _clientProjects.Remove(gone);
+
+            var items = _clientProjects
+                .SelectMany(kv => kv.Value.Select((p, i) => (Client: kv.Key, Project: p, Index: i)))
+                .Where(x => !x.Project.IsClosed)
+                .OrderBy(x => x.Project.Deadline ?? DateTime.MaxValue)
+                .ThenBy(x => x.Client.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.Index)
+                .ToList();
+
+            _projectsGroup.Children.Clear();
+            foreach (var x in items)
+            {
+                _projectsGroup.Children.Add(new NodeViewModel
+                {
+                    Name = string.IsNullOrWhiteSpace(x.Project.Name) ? "Проект без названия" : x.Project.Name.Trim(),
+                    Hint = ProjectHint(x.Client, x.Project),
+                    FullPath = ProjectsGroupPath + "|" + x.Client.FullPath + "|" + x.Index,
+                    Type = NodeType.Project,
+                    Target = x.Client,
+                    ProjectIndex = x.Index,
+                    Parent = _projectsGroup
+                });
+            }
+
+            var present = RootNodes.Contains(_projectsGroup);
+            if (items.Count > 0 && !present) RootNodes.Insert(0, _projectsGroup);
+            else if (items.Count == 0 && present) RootNodes.Remove(_projectsGroup);
+
+            var q = SearchBox.Text.Trim();
+            if (items.Count > 0 && q.Length > 0) RecalcVisibility(_projectsGroup, q);
+        }
+
+        private static string ProjectHint(NodeViewModel client, ClientProject p)
+        {
+            string when;
+            if (p.Deadline is { } d)
+                when = d.Date < DateTime.Today ? "срок был " + DateText.HumanDate(d) : "до " + DateText.HumanDate(d);
+            else
+                when = p.Status.ToLower();
+            return client.Name + " · " + when;
+        }
+
+        private void OpenProject(NodeViewModel node)
+        {
+            if (node.Target is not { } client) return;
+            var index = node.ProjectIndex;
+            SelectNode(client);
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (ReferenceEquals(_currentClientNode, client)) ClientView.ShowProject(index);
+            }, DispatcherPriority.Background);
         }
 
         private int _warmGeneration;
