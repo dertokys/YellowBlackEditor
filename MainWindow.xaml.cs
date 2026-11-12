@@ -1221,6 +1221,7 @@ namespace YellowBlackEditor
                     break;
                 case NodeType.Client:
                     Add("+ Заметка по клиенту", () => AddDocumentUnder(node));
+                    Add("Передать коллеге…", () => OpenTransfer(node, false));
                     Add("Добавить картинку…", () => AddAttachmentViaDialog(node));
                     Add("Открыть папку", () => OpenInExplorer(node.FullPath));
                     Sep();
@@ -1229,6 +1230,7 @@ namespace YellowBlackEditor
                     break;
                 case NodeType.Document:
                     Add("+ Вложенная заметка", () => AddDocumentUnder(node));
+                    Add("Передать коллеге…", () => OpenTransfer(node, false));
                     Add("Вставить картинку в текст…", () => InsertImage_Click(this, new RoutedEventArgs()));
                     Add("Добавить картинку рядом…", () => AddAttachmentViaDialog(node));
                     Add("Открыть папку", () => OpenInExplorer(node.FullPath));

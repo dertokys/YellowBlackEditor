@@ -114,6 +114,7 @@ namespace YellowBlackEditor
                 var result = sync.Run();
                 List<SharedProject>? shared = null;
                 List<SharedPerson>? people = null;
+                List<Transfer>? inbox = null;
                 try
                 {
                     SharedProjects.TouchPerson(exchange, myName);
@@ -122,7 +123,9 @@ namespace YellowBlackEditor
                 catch (Exception ex) { LogError("Список коллег", ex); }
                 try { shared = SharedProjects.LoadAll(exchange); }
                 catch (Exception ex) { LogError("Общие проекты", ex); }
-                return (result, shared, people);
+                try { inbox = Transfers.LoadInbox(exchange, AppSettings.UserId); }
+                catch (Exception ex) { LogError("Входящие передачи", ex); }
+                return (result, shared, people, inbox);
             }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
                 _syncRunning = false;
@@ -139,8 +142,9 @@ namespace YellowBlackEditor
                         Status(unavailable ? $"Папка обмена недоступна: {_appSettings.SyncFolder}" : "Обмен не удался: " + ex.Message);
                     return;
                 }
-                var (r, shared, people) = t.Result;
+                var (r, shared, people, inbox) = t.Result;
                 if (people != null) _people = people;
+                if (inbox != null && exchange == _appSettings.SyncFolder) UpdateInbox(inbox, notify: true);
                 SyncText.Text = "Обмен: " + DateTime.Now.ToString("HH:mm");
                 SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
                 if (r.Conflicts > 0)

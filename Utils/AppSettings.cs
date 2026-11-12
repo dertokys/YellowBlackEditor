@@ -13,6 +13,7 @@ namespace YellowBlackEditor.Utils
         public string UserName { get; set; } = "";
         public List<string> HiddenShared { get; set; } = new();
         public List<string> SeenInvites { get; set; } = new();
+        public List<string> SeenTransfers { get; set; } = new();
 
         public static string UserId => Environment.MachineName + "\\" + Environment.UserName;
         public static string MachineName => Environment.MachineName;

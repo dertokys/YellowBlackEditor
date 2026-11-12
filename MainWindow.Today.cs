@@ -359,6 +359,7 @@ namespace YellowBlackEditor
             {
                 _lastBalloonIsReminder = false;
                 _balloonSharedId = messages[0].Id;
+                _balloonTransfer = false;
                 _tray?.ShowBalloonTip(8000, title, text, WF.ToolTipIcon.Info);
             }
             catch (Exception ex)

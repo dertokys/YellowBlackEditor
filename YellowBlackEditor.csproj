@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\App.ico</ApplicationIcon>
-    <Version>1.5.2</Version>
+    <Version>1.5.3</Version>
     <Product>Yellow Black Notes</Product>
   </PropertyGroup>
   <ItemGroup>
