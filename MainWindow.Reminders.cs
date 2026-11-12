@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -13,19 +15,21 @@ namespace YellowBlackEditor
     public partial class MainWindow
     {
         private ObservableCollection<Reminder> _generalReminders = new();
-        private readonly Dictionary<string, (DateTime MTime, ClientCard Card)> _cardCache = new(StringComparer.OrdinalIgnoreCase);
+        private ObservableCollection<Reminder>? _clientReminders;
+        private string _clientRemindersPath = "";
         private DispatcherTimer? _reminderTimer;
+        private DispatcherTimer? _reminderSaveTimer;
         private WF.NotifyIcon? _tray;
-        private bool _remindersMode;
         private bool _exitRequested;
+        private bool _lastBalloonIsReminder;
         private AppSettings _appSettings = AppSettings.Load();
 
         private void InitReminders()
         {
             RemindersPanel.StatusMessage += Status;
-            RemindersPanel.OpenClientRequested += n => SelectNode(n);
-            RemindersPanel.OpenNoteRequested += n => SelectNode(n);
-            RemindersPanel.EntryChanged += e => { PersistReminder(e); RefreshReminders(); };
+            RemindersPanel.OpenClientRequested += n => { RemindersPopup.IsOpen = false; SelectNode(n); };
+            RemindersPanel.OpenNoteRequested += n => { RemindersPopup.IsOpen = false; SelectNode(n); };
+            RemindersPanel.EntryChanged += _ => { SaveGeneralReminders(); RefreshReminders(); };
             RemindersPanel.EntryDeleted += DeleteReminder;
             RemindersPanel.AddRequested += r =>
             {
@@ -34,6 +38,18 @@ namespace YellowBlackEditor
                 RefreshReminders();
                 Status("Напоминание добавлено");
             };
+
+            _reminderSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
+            _reminderSaveTimer.Tick += (_, _) =>
+            {
+                _reminderSaveTimer.Stop();
+                SaveGeneralReminders();
+                RefreshReminders();
+            };
+
+            PreviewMouseDown += (_, _) => { if (RemindersPopup.IsOpen && !BellBtn.IsMouseOver) RemindersPopup.IsOpen = false; };
+            Deactivated += (_, _) => RemindersPopup.IsOpen = false;
+            LocationChanged += (_, _) => RemindersPopup.IsOpen = false;
 
             try
             {
@@ -78,9 +94,8 @@ namespace YellowBlackEditor
             catch (Exception ex)
             {
                 _generalReminders = new();
-                LogError("Не удалось прочитать общие напоминания", ex);
+                LogError("Не удалось прочитать напоминания", ex);
             }
-            _cardCache.Clear();
         }
 
         private void SaveGeneralReminders()
@@ -91,79 +106,99 @@ namespace YellowBlackEditor
             }
             catch (Exception ex)
             {
-                ShowError("Не удалось сохранить напоминания", ex, "Проверьте, что рабочая папка доступна.");
+                LogError("Не удалось сохранить напоминания", ex);
+                Status("Не удалось сохранить напоминания: рабочая папка недоступна");
             }
         }
 
-        private ClientCard? CardFor(NodeViewModel client)
+        private void ScheduleReminderSave()
         {
-            if (ReferenceEquals(client, _currentClientNode) && _currentClient != null) return _currentClient;
-            try
-            {
-                var path = ClientStore.CardPath(client.FullPath);
-                if (!File.Exists(path)) return null;
-                var mtime = File.GetLastWriteTimeUtc(path);
-                if (_cardCache.TryGetValue(client.FullPath, out var c) && c.MTime == mtime) return c.Card;
-                var card = ClientStore.Load(client.FullPath);
-                _cardCache[client.FullPath] = (mtime, card);
-                return card;
-            }
-            catch (Exception ex)
-            {
-                LogError($"Не удалось прочитать карточку {client.FullPath}", ex);
-                return null;
-            }
+            if (_reminderSaveTimer == null) return;
+            _reminderSaveTimer.Stop();
+            _reminderSaveTimer.Start();
         }
 
-        private List<ReminderEntry> CollectReminders()
+        private ObservableCollection<Reminder> ClientRemindersFor(NodeViewModel client, ClientCard card)
         {
-            var notes = Flatten(RootNodes).Where(n => n.Type == NodeType.Document)
-                .GroupBy(RelativePath, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-            var list = _generalReminders.Select(r => new ReminderEntry
+            DetachClientReminders();
+            var rel = RelativePath(client);
+
+            if (card.Reminders is { Count: > 0 } legacy)
             {
-                Item = r,
-                Note = r.NotePath.Length > 0 && notes.TryGetValue(r.NotePath, out var note) ? note : null
-            }).ToList();
-            foreach (var client in Flatten(RootNodes).Where(n => n.Type == NodeType.Client))
-            {
-                var card = CardFor(client);
-                if (card == null) continue;
-                list.AddRange(card.Reminders.Select(r => new ReminderEntry { Item = r, Client = client, Card = card }));
+                foreach (var r in legacy)
+                {
+                    r.ClientPath = rel;
+                    _generalReminders.Add(r);
+                }
+                card.Reminders = null;
+                SaveGeneralReminders();
+                _clientDirty = true;
+                RestartSaveTimer();
             }
+
+            var list = new ObservableCollection<Reminder>(
+                _generalReminders.Where(r => string.Equals(r.ClientPath, rel, StringComparison.OrdinalIgnoreCase)));
+            foreach (var r in list) r.PropertyChanged += ClientReminder_PropertyChanged;
+            list.CollectionChanged += ClientReminders_CollectionChanged;
+            _clientReminders = list;
+            _clientRemindersPath = rel;
             return list;
         }
 
-        private void PersistReminder(ReminderEntry entry)
+        private void DetachClientReminders()
         {
-            if (entry.Client == null || entry.Card == null)
+            if (_clientReminders == null) return;
+            _clientReminders.CollectionChanged -= ClientReminders_CollectionChanged;
+            foreach (var r in _clientReminders) r.PropertyChanged -= ClientReminder_PropertyChanged;
+            _clientReminders = null;
+        }
+
+        private void ClientReminders_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+                foreach (Reminder r in e.NewItems)
+                {
+                    r.ClientPath = _clientRemindersPath;
+                    r.PropertyChanged += ClientReminder_PropertyChanged;
+                    if (!_generalReminders.Contains(r)) _generalReminders.Add(r);
+                }
+            if (e.OldItems != null)
+                foreach (Reminder r in e.OldItems)
+                {
+                    r.PropertyChanged -= ClientReminder_PropertyChanged;
+                    _generalReminders.Remove(r);
+                }
+            ScheduleReminderSave();
+        }
+
+        private void ClientReminder_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(Reminder.IsOverdue) or nameof(Reminder.DueHuman) or nameof(Reminder.DueInvalid)) return;
+            ScheduleReminderSave();
+        }
+
+        private Dictionary<string, NodeViewModel> NodesByPath(NodeType type) =>
+            Flatten(RootNodes).Where(n => n.Type == type)
+                .GroupBy(RelativePath, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        private List<ReminderEntry> CollectReminders()
+        {
+            var notes = NodesByPath(NodeType.Document);
+            var clients = NodesByPath(NodeType.Client);
+            return _generalReminders.Select(r => new ReminderEntry
             {
-                SaveGeneralReminders();
-                return;
-            }
-            if (ReferenceEquals(entry.Card, _currentClient))
-            {
-                _clientDirty = true;
-                RestartSaveTimer();
-                return;
-            }
-            try
-            {
-                ClientStore.Save(entry.Client.FullPath, entry.Card);
-                _cardCache[entry.Client.FullPath] = (File.GetLastWriteTimeUtc(ClientStore.CardPath(entry.Client.FullPath)), entry.Card);
-                _contentCache.Remove(entry.Client.FullPath);
-            }
-            catch (Exception ex)
-            {
-                ShowError("Не удалось сохранить напоминание", ex, "Проверьте, что рабочая папка доступна.");
-            }
+                Item = r,
+                Note = r.NotePath.Length > 0 && notes.TryGetValue(r.NotePath, out var note) ? note : null,
+                Client = r.ClientPath.Length > 0 && clients.TryGetValue(r.ClientPath, out var client) ? client : null
+            }).ToList();
         }
 
         private void DeleteReminder(ReminderEntry entry)
         {
-            if (entry.Client == null) _generalReminders.Remove(entry.Item);
-            else entry.Card?.Reminders.Remove(entry.Item);
-            PersistReminder(entry);
+            _generalReminders.Remove(entry.Item);
+            _clientReminders?.Remove(entry.Item);
+            SaveGeneralReminders();
             RefreshReminders();
             Status("Напоминание удалено");
         }
@@ -172,8 +207,24 @@ namespace YellowBlackEditor
         {
             var entries = CollectReminders();
             UpdateBell(entries);
+            UpdateTreeBells(entries);
             UpdateNoteReminderButton();
-            if (_remindersMode) RemindersPanel.Show(entries);
+            if (RemindersPopup.IsOpen) RemindersPanel.Show(entries);
+        }
+
+        private void UpdateTreeBells(List<ReminderEntry> entries)
+        {
+            var now = DateTime.Now;
+            var state = new Dictionary<NodeViewModel, int>();
+            foreach (var e in entries.Where(e => !e.Item.Done))
+            {
+                var node = e.Note ?? e.Client;
+                if (node == null) continue;
+                var s = e.Item.Due != null && e.Item.Due <= now ? 2 : 1;
+                state[node] = Math.Max(state.GetValueOrDefault(node), s);
+            }
+            foreach (var n in Flatten(RootNodes))
+                n.ReminderState = state.GetValueOrDefault(n);
         }
 
         private string RelativePath(NodeViewModel node) => Path.GetRelativePath(_workspacePath, node.FullPath);
@@ -189,7 +240,7 @@ namespace YellowBlackEditor
 
         private void UpdateNoteReminderButton()
         {
-            if (_currentDocNode == null || _remindersMode)
+            if (_currentDocNode == null)
             {
                 NoteReminderBtn.Visibility = Visibility.Collapsed;
                 return;
@@ -238,6 +289,14 @@ namespace YellowBlackEditor
                 });
         }
 
+        private static string MovedPath(string path, string oldRel, string newRel)
+        {
+            if (path.Equals(oldRel, StringComparison.OrdinalIgnoreCase)) return newRel;
+            if (path.StartsWith(oldRel + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return newRel + path.Substring(oldRel.Length);
+            return path;
+        }
+
         private void MoveNoteReminders(string oldDir, string newDir)
         {
             var oldRel = Path.GetRelativePath(_workspacePath, oldDir);
@@ -245,13 +304,14 @@ namespace YellowBlackEditor
             var changed = false;
             foreach (var r in _generalReminders)
             {
-                if (r.NotePath.Equals(oldRel, StringComparison.OrdinalIgnoreCase))
-                    r.NotePath = newRel;
-                else if (r.NotePath.StartsWith(oldRel + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    r.NotePath = newRel + r.NotePath.Substring(oldRel.Length);
-                else continue;
+                var note = MovedPath(r.NotePath, oldRel, newRel);
+                var client = MovedPath(r.ClientPath, oldRel, newRel);
+                if (note == r.NotePath && client == r.ClientPath) continue;
+                r.NotePath = note;
+                r.ClientPath = client;
                 changed = true;
             }
+            if (_clientRemindersPath.Length > 0) _clientRemindersPath = MovedPath(_clientRemindersPath, oldRel, newRel);
             if (changed) SaveGeneralReminders();
         }
 
@@ -283,23 +343,21 @@ namespace YellowBlackEditor
 
             if (due.Count > 0)
             {
-                foreach (var e in due)
-                {
-                    e.Item.Notified = true;
-                    PersistReminder(e);
-                }
+                foreach (var e in due) e.Item.Notified = true;
+                SaveGeneralReminders();
                 Notify(due);
             }
 
             UpdateBell(entries);
+            UpdateTreeBells(entries);
             UpdateNoteReminderButton();
-            if (_remindersMode && due.Count > 0) RemindersPanel.Show(entries);
+            if (RemindersPopup.IsOpen && due.Count > 0) RemindersPanel.Show(entries);
         }
 
         private void Notify(List<ReminderEntry> due)
         {
             var first = due[0];
-            var source = first.Client?.Name ?? first.Note?.Name;
+            var source = first.Note?.Name ?? first.Client?.Name;
             var title = due.Count == 1
                 ? (source != null ? $"Напоминание · {source}" : "Напоминание")
                 : $"Напоминаний: {due.Count}";
@@ -319,8 +377,6 @@ namespace YellowBlackEditor
             Status(due.Count == 1 ? $"Напоминание: {text}" : title);
         }
 
-        private bool _lastBalloonIsReminder;
-
         public void BringToFront()
         {
             if (!IsVisible) Show();
@@ -334,7 +390,7 @@ namespace YellowBlackEditor
         private void BringToFrontAndShowReminders()
         {
             BringToFront();
-            ShowReminders();
+            Dispatcher.BeginInvoke(ShowReminders, DispatcherPriority.ApplicationIdle);
         }
 
         private void ExitApp()
@@ -351,6 +407,7 @@ namespace YellowBlackEditor
             _saveTimer.Stop();
             SaveAll(quiet: true);
             SaveWindowPlacement();
+            RemindersPopup.IsOpen = false;
             Hide();
             if (!_appSettings.TrayHintShown)
             {
@@ -364,40 +421,16 @@ namespace YellowBlackEditor
             return true;
         }
 
-        private void ShowReminders_Click(object sender, RoutedEventArgs e) => ShowReminders();
+        private void ShowReminders_Click(object sender, RoutedEventArgs e)
+        {
+            if (RemindersPopup.IsOpen) RemindersPopup.IsOpen = false;
+            else ShowReminders();
+        }
 
         private void ShowReminders()
         {
-            if (!SaveAll()) return;
-            _saveTimer.Stop();
-            _remindersMode = true;
-
-            if (Tree.SelectedItem is NodeViewModel sel) sel.IsSelected = false;
-
-            _currentDocNode = null;
-            _currentClientNode = null;
-            DetachCurrentClient();
-            _isDirty = _clientDirty = false;
-            _emptyStateNode = null;
-
-            ClientView.Clear();
-            ClientView.Visibility = Visibility.Collapsed;
-            EditorHost.Visibility = Visibility.Collapsed;
-            FormatBar.IsEnabled = false;
-            RenameBtn.Visibility = Visibility.Collapsed;
-            NoteReminderBtn.Visibility = Visibility.Collapsed;
-            CurrentKindText.Text = "";
-            CurrentFileText.Text = "Напоминания";
-            DirtyText.Text = "";
-            RemindersPanel.Visibility = Visibility.Visible;
-            UpdateTitle();
-            RefreshReminders();
-        }
-
-        private void HideReminders()
-        {
-            _remindersMode = false;
-            RemindersPanel.Visibility = Visibility.Collapsed;
+            RemindersPanel.Show(CollectReminders());
+            RemindersPopup.IsOpen = true;
         }
 
         private void DisposeTray()

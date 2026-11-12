@@ -1,6 +1,12 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Threading;
 using YellowBlackEditor.Models;
 using YellowBlackEditor.Utils;
 using YellowBlackEditor.ViewModels;
@@ -9,7 +15,7 @@ namespace YellowBlackEditor.Views
 {
     public partial class ClientCardView : System.Windows.Controls.UserControl
     {
-        public sealed record NoteItem(NodeViewModel Node, string Name, string Modified);
+        public sealed record NoteItem(NodeViewModel Node, string Name, string Modified, DateTime Created);
 
         public event Action<string>? StatusMessage;
         public event Action? AddNoteRequested;
@@ -17,31 +23,107 @@ namespace YellowBlackEditor.Views
 
         private NodeViewModel? _node;
         private ClientCard? _card;
+        private ObservableCollection<Reminder>? _reminders;
 
         public ClientCardView()
         {
             InitializeComponent();
         }
 
-        public void Show(NodeViewModel node, ClientCard card)
+        public void Show(NodeViewModel node, ClientCard card, ObservableCollection<Reminder> reminders)
         {
-            if (_card != null) _card.Changed -= Card_Changed;
+            Detach();
             _node = node;
             _card = card;
+            _reminders = reminders;
             _card.Changed += Card_Changed;
+            _reminders.CollectionChanged += Reminders_Changed;
+            foreach (var r in _reminders) r.PropertyChanged += Reminder_PropertyChanged;
             DataContext = card;
+
+            var projects = new ListCollectionView(card.Projects) { IsLiveSorting = true };
+            projects.SortDescriptions.Add(new SortDescription(nameof(ClientProject.IsClosed), ListSortDirection.Ascending));
+            projects.LiveSortingProperties.Add(nameof(ClientProject.IsClosed));
+            ProjectsList.ItemsSource = projects;
+
+            var rem = new ListCollectionView(reminders) { IsLiveSorting = true };
+            rem.SortDescriptions.Add(new SortDescription(nameof(Reminder.Done), ListSortDirection.Ascending));
+            rem.SortDescriptions.Add(new SortDescription(nameof(Reminder.Due), ListSortDirection.Ascending));
+            rem.LiveSortingProperties.Add(nameof(Reminder.Done));
+            RemindersList.ItemsSource = rem;
+
             RefreshNotes();
+            RefreshCounts();
         }
 
-        private void Card_Changed(object? sender, EventArgs e) => RefreshReminderCount();
+        private void Detach()
+        {
+            if (_card != null) _card.Changed -= Card_Changed;
+            if (_reminders != null)
+            {
+                _reminders.CollectionChanged -= Reminders_Changed;
+                foreach (var r in _reminders) r.PropertyChanged -= Reminder_PropertyChanged;
+            }
+        }
 
         public void Clear()
         {
-            if (_card != null) _card.Changed -= Card_Changed;
+            Detach();
             _card = null;
             _node = null;
+            _reminders = null;
             DataContext = null;
             NotesList.ItemsSource = null;
+            ProjectsList.ItemsSource = null;
+            RemindersList.ItemsSource = null;
+        }
+
+        private void Card_Changed(object? sender, EventArgs e)
+        {
+            if (_card == null) return;
+            foreach (var p in _card.Projects) p.RefreshProgress();
+            RefreshCounts();
+        }
+
+        private void Reminders_Changed(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null) foreach (Reminder r in e.NewItems) r.PropertyChanged += Reminder_PropertyChanged;
+            if (e.OldItems != null) foreach (Reminder r in e.OldItems) r.PropertyChanged -= Reminder_PropertyChanged;
+            RefreshCounts();
+        }
+
+        private void Reminder_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Reminder.Done)) RefreshCounts();
+        }
+
+        private static void SetCount(TextBlock target, int count)
+        {
+            target.Text = count > 0 ? count.ToString() : "";
+            target.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void RefreshCounts()
+        {
+            if (_card == null) return;
+            SetCount(ContactsCount, _card.Contacts.Count);
+            SetCount(PointsCount, _card.Accesses.Count);
+            SetCount(CredentialsCount, _card.Credentials.Count);
+            SetCount(ProjectsCount, _card.Projects.Count(p => !p.IsClosed));
+            SetCount(RemindersCount, _reminders?.Count(r => !r.Done) ?? 0);
+
+            ContactsEmpty.Visibility = _card.Contacts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ContactsHeader.Visibility = _card.Contacts.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            PointsEmpty.Visibility = _card.Accesses.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            CredentialsEmpty.Visibility = _card.Credentials.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ProjectsEmpty.Visibility = _card.Projects.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            RemindersEmpty.Visibility = (_reminders?.Count ?? 0) == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void RebindNode(NodeViewModel node)
+        {
+            _node = node;
+            RefreshNotes();
         }
 
         public void RefreshNotes()
@@ -49,13 +131,17 @@ namespace YellowBlackEditor.Views
             if (_node == null) return;
             var items = _node.Children
                 .Where(c => c.Type == NodeType.Document)
-                .Select(c => new NoteItem(c, c.Name, ModifiedText(c.FullPath)))
+                .Select(c => new NoteItem(c, c.Name, ModifiedText(c.FullPath), CreatedAt(c.FullPath)))
+                .OrderByDescending(n => n.Created)
                 .ToList();
             NotesList.ItemsSource = items;
             NotesEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            NotesCount.Text = items.Count > 0 ? items.Count.ToString() : "";
-            NotesCount.Visibility = items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            RefreshReminderCount();
+            SetCount(NotesCount, items.Count);
+        }
+
+        private static DateTime CreatedAt(string folder)
+        {
+            try { return Directory.GetCreationTime(folder); } catch { return DateTime.MinValue; }
         }
 
         private static string ModifiedText(string folder)
@@ -72,6 +158,69 @@ namespace YellowBlackEditor.Views
             }
         }
 
+        public void FocusFirstField()
+        {
+            Tabs.SelectedIndex = 0;
+            Dispatcher.BeginInvoke(() => InnBox.Focus(), DispatcherPriority.ContextIdle);
+        }
+
+        private static T? Ctx<T>(object sender) where T : class => (sender as FrameworkElement)?.DataContext as T;
+
+        private bool ConfirmDelete(string header, string message = "") =>
+            ThemedMessageBox.Confirm(Window.GetWindow(this), header, message, "Удалить");
+
+        private void FocusNewItem(ItemsControl list, object item)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (list.ItemContainerGenerator.ContainerFromItem(item) is not DependencyObject container) return;
+                var box = FindFirst<System.Windows.Controls.TextBox>(container);
+                if (box == null) return;
+                box.Focus();
+                box.BringIntoView();
+            }, DispatcherPriority.ContextIdle);
+        }
+
+        private static T? FindFirst<T>(DependencyObject root) where T : DependencyObject
+        {
+            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+                if (child is T hit && (child as UIElement)?.IsVisible != false) return hit;
+                var deeper = FindFirst<T>(child);
+                if (deeper != null) return deeper;
+            }
+            return null;
+        }
+
+        private static T? FindAncestor<T>(DependencyObject? d) where T : DependencyObject
+        {
+            while (d != null && d is not T) d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+            return d as T;
+        }
+
+        private void FocusBoxFor(object item)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                var box = FindBoxFor(this, item);
+                box?.Focus();
+                box?.BringIntoView();
+            }, DispatcherPriority.ContextIdle);
+        }
+
+        private static System.Windows.Controls.TextBox? FindBoxFor(DependencyObject root, object item)
+        {
+            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+                if (child is System.Windows.Controls.TextBox tb && ReferenceEquals(tb.DataContext, item)) return tb;
+                var deeper = FindBoxFor(child, item);
+                if (deeper != null) return deeper;
+            }
+            return null;
+        }
+
         private void Copy_Click(object sender, RoutedEventArgs e)
         {
             var text = ((sender as FrameworkElement)?.Tag as string ?? "").Trim();
@@ -81,7 +230,7 @@ namespace YellowBlackEditor.Views
                 return;
             }
             if (!TrySetClipboard(text)) return;
-            StatusMessage?.Invoke("\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u043E \u0432 \u0431\u0443\u0444\u0435\u0440 \u043E\u0431\u043C\u0435\u043D\u0430");
+            StatusMessage?.Invoke("Скопировано в буфер обмена");
             if (sender is System.Windows.Controls.Button b) FlashCopied(b);
         }
 
@@ -94,7 +243,7 @@ namespace YellowBlackEditor.Views
         private static void FlashCopied(System.Windows.Controls.Button b)
         {
             SetCopied(b, true);
-            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+            var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             t.Tick += (_, _) =>
             {
                 t.Stop();
@@ -129,43 +278,11 @@ namespace YellowBlackEditor.Views
             FocusNewItem(ContactsList, c);
         }
 
-        public void FocusFirstField()
-        {
-            Tabs.SelectedIndex = 0;
-            Dispatcher.BeginInvoke(() => InnBox.Focus(), System.Windows.Threading.DispatcherPriority.ContextIdle);
-        }
-
-        private void FocusNewItem(ItemsControl list, object item)
-        {
-            Dispatcher.BeginInvoke(() =>
-            {
-                if (list.ItemContainerGenerator.ContainerFromItem(item) is not DependencyObject container) return;
-                var box = FindFirst<System.Windows.Controls.TextBox>(container);
-                if (box == null) return;
-                box.Focus();
-                box.BringIntoView();
-            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
-        }
-
-        private static T? FindFirst<T>(DependencyObject root) where T : DependencyObject
-        {
-            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
-                if (child is T hit && (child as UIElement)?.IsVisible != false) return hit;
-                var deeper = FindFirst<T>(child);
-                if (deeper != null) return deeper;
-            }
-            return null;
-        }
-
         private void RemoveContact_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is not ClientContact c) return;
+            if (Ctx<ClientContact>(sender) is not { } c) return;
             var hasData = !string.IsNullOrWhiteSpace(c.Name) || !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role);
-            if (hasData && !ThemedMessageBox.Confirm(Window.GetWindow(this),
-                    $"Удалить контакт «{(string.IsNullOrWhiteSpace(c.Name) ? c.Phone : c.Name)}»?", "", "Удалить"))
-                return;
+            if (hasData && !ConfirmDelete($"Удалить контакт «{(string.IsNullOrWhiteSpace(c.Name) ? c.Phone : c.Name)}»?")) return;
             _card?.Contacts.Remove(c);
         }
 
@@ -179,15 +296,33 @@ namespace YellowBlackEditor.Views
 
         private void RemoveAccess_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is not RemoteAccess a) return;
+            if (Ctx<RemoteAccess>(sender) is not { } a) return;
             var title = string.IsNullOrWhiteSpace(a.Point) ? a.Program : a.Point;
-            if (ThemedMessageBox.Confirm(Window.GetWindow(this), $"Удалить точку «{title}»?", "ID и пароль этой точки тоже удалятся.", "Удалить"))
+            if (ConfirmDelete($"Удалить точку «{title}»?", "ID, телефоны и пароли этой точки тоже удалятся."))
                 _card?.Accesses.Remove(a);
+        }
+
+        private void AddPointLogin_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<RemoteAccess>(sender) is not { } a) return;
+            var l = new Credential();
+            a.Logins.Add(l);
+            FocusBoxFor(l);
+        }
+
+        private void RemovePointLogin_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<Credential>(sender) is not { } l || _card == null) return;
+            var owner = _card.Accesses.FirstOrDefault(a => a.Logins.Contains(l));
+            if (owner == null) return;
+            var empty = string.IsNullOrWhiteSpace(l.Title) && string.IsNullOrWhiteSpace(l.Login) && string.IsNullOrWhiteSpace(l.Password);
+            if (empty || ConfirmDelete($"Удалить пароль «{(string.IsNullOrWhiteSpace(l.Title) ? l.Login : l.Title)}»?"))
+                owner.Logins.Remove(l);
         }
 
         private void Connect_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is not RemoteAccess a) return;
+            if (Ctx<RemoteAccess>(sender) is not { } a) return;
             if (!string.IsNullOrWhiteSpace(a.AccessId)) TrySetClipboard(a.AccessId.Trim());
             try
             {
@@ -199,26 +334,54 @@ namespace YellowBlackEditor.Views
             }
         }
 
-        private void Pwd_Loaded(object sender, RoutedEventArgs e) => SyncPasswordBox(sender as PasswordBox);
-
-        private void Pwd_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e) => SyncPasswordBox(sender as PasswordBox);
-
-        private static void SyncPasswordBox(PasswordBox? pb)
+        private void AddCredential_Click(object sender, RoutedEventArgs e)
         {
-            if (pb?.DataContext is RemoteAccess a && pb.Password != a.Password) pb.Password = a.Password;
+            if (_card == null) return;
+            var c = new Credential();
+            _card.Credentials.Add(c);
+            FocusNewItem(CredentialsList, c);
         }
 
-        private void Pwd_PasswordChanged(object sender, RoutedEventArgs e)
+        private void RemoveCredential_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is PasswordBox pb && pb.DataContext is RemoteAccess a && a.Password != pb.Password)
-                a.Password = pb.Password;
+            if (Ctx<Credential>(sender) is not { } c) return;
+            var empty = string.IsNullOrWhiteSpace(c.Title) && string.IsNullOrWhiteSpace(c.Login) && string.IsNullOrWhiteSpace(c.Password);
+            if (empty || ConfirmDelete($"Удалить доступ «{(string.IsNullOrWhiteSpace(c.Title) ? c.Url : c.Title)}»?"))
+                _card?.Credentials.Remove(c);
         }
 
-        public void RefreshReminderCount()
+        private void OpenLink_Click(object sender, RoutedEventArgs e)
         {
-            var open = _card?.Reminders.Count(r => !r.Done) ?? 0;
-            RemindersCount.Text = open > 0 ? open.ToString() : "";
-            RemindersCount.Visibility = open > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (Ctx<Credential>(sender) is not { } c) return;
+            var url = c.Url.Trim();
+            if (url.Length == 0) return;
+            if (!url.Contains("://")) url = "https://" + url;
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage?.Invoke("Не удалось открыть ссылку: " + ex.Message);
+            }
+        }
+
+        private void EditLink_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<Credential>(sender) is not { } c) return;
+            c.EditingUrl = true;
+            var grid = FindAncestor<Grid>(FindAncestor<Border>((DependencyObject)sender));
+            var box = grid?.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            Dispatcher.BeginInvoke(() =>
+            {
+                box?.Focus();
+                box?.SelectAll();
+            }, DispatcherPriority.Input);
+        }
+
+        private void UrlBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (Ctx<Credential>(sender) is { } c) c.EditingUrl = false;
         }
 
         private void AddProject_Click(object sender, RoutedEventArgs e)
@@ -231,40 +394,96 @@ namespace YellowBlackEditor.Views
 
         private void RemoveProject_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is not ClientProject p) return;
-            var title = string.IsNullOrWhiteSpace(p.Name) ? "без названия" : $"«{p.Name}»";
-            if (string.IsNullOrWhiteSpace(p.Name) && string.IsNullOrWhiteSpace(p.Comment) ||
-                ThemedMessageBox.Confirm(Window.GetWindow(this), $"Удалить проект {title}?", "", "Удалить"))
+            if (Ctx<ClientProject>(sender) is not { } p) return;
+            var empty = string.IsNullOrWhiteSpace(p.Name) && string.IsNullOrWhiteSpace(p.Comment) && p.Tasks.Count == 0;
+            if (empty || ConfirmDelete($"Удалить проект «{(string.IsNullOrWhiteSpace(p.Name) ? "без названия" : p.Name)}»?", "Этапы проекта тоже удалятся."))
                 _card?.Projects.Remove(p);
+        }
+
+        private void Deadline_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not ClientProject p) return;
+            ReminderPicker.Open(fe, p.Deadline, null, false, p.Deadline != null, (d, _) => p.Deadline = d.Date,
+                () => p.Deadline = null, dateOnly: true, removeText: "Убрать срок");
+        }
+
+        private void AddTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ClientProject>(sender) is not { } p) return;
+            var t = new ProjectTask();
+            p.Tasks.Add(t);
+            p.IsExpanded = true;
+            FocusBoxFor(t);
+        }
+
+        private void AddSubtask_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ProjectTask>(sender) is not { } parent) return;
+            var t = new ProjectTask();
+            parent.Children.Add(t);
+            FocusBoxFor(t);
+        }
+
+        private ObservableCollection<ProjectTask>? OwnerList(ProjectTask task)
+        {
+            if (_card == null) return null;
+            foreach (var p in _card.Projects)
+            {
+                if (p.Tasks.Contains(task)) return p.Tasks;
+                foreach (var t in p.AllTasks())
+                    if (t.Children.Contains(task)) return t.Children;
+            }
+            return null;
+        }
+
+        private void RemoveTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<ProjectTask>(sender) is not { } task) return;
+            var list = OwnerList(task);
+            if (list == null) return;
+            if (task.Children.Count > 0 && !ConfirmDelete($"Удалить этап «{task.Title}»?", "Вложенные этапы тоже удалятся.")) return;
+            list.Remove(task);
+        }
+
+        private void TaskTitle_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter || Ctx<ProjectTask>(sender) is not { } task) return;
+            var list = OwnerList(task);
+            if (list == null) return;
+            var t = new ProjectTask();
+            list.Insert(list.IndexOf(task) + 1, t);
+            FocusBoxFor(t);
+            e.Handled = true;
         }
 
         private void AddReminder_Click(object sender, RoutedEventArgs e)
         {
-            if (_card == null) return;
-            var r = new Reminder { Due = DateTime.Today.AddDays(1).AddHours(10) };
-            _card.Reminders.Add(r);
-            RefreshReminderCount();
+            if (_reminders == null) return;
+            var r = new Reminder { Due = DateText.DefaultReminderTime() };
+            _reminders.Add(r);
             FocusNewItem(RemindersList, r);
         }
 
         private void RemoveReminder_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is not Reminder r || _card == null) return;
-            _card.Reminders.Remove(r);
-            RefreshReminderCount();
+            if (Ctx<Reminder>(sender) is { } r) _reminders?.Remove(r);
         }
 
         private void DuePresets_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not Reminder r) return;
-            ReminderPicker.Open(fe, r.Due, null, false, false, (d, _) => r.Due = d);
+            ReminderPicker.Open(fe, r.Due, null, false, false, (d, _) =>
+            {
+                r.Due = d;
+                r.Notified = false;
+            });
         }
 
         private void AddNote_Click(object sender, RoutedEventArgs e) => AddNoteRequested?.Invoke();
 
         private void OpenNote_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is NoteItem n) OpenNoteRequested?.Invoke(n.Node);
+            if (Ctx<NoteItem>(sender) is { } n) OpenNoteRequested?.Invoke(n.Node);
         }
     }
 }

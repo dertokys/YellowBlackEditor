@@ -33,6 +33,8 @@ namespace YellowBlackEditor.Views
             _hotkeysWork = HotkeyManager.Load(_hotkeysPath);
             _appSettings = AppSettings.Load();
             TrayCheck.IsChecked = _appSettings.MinimizeToTray;
+            SyncCheck.IsChecked = _appSettings.SyncEnabled;
+            SyncFolderBox.Text = _appSettings.SyncFolder;
             try { AutostartCheck.IsChecked = AppSettings.StartsWithWindows; } catch { AutostartCheck.IsEnabled = false; }
 
             AccentBox.Text = ThemeManager.Current.Accent;
@@ -204,6 +206,8 @@ namespace YellowBlackEditor.Views
                 HotkeyManager.Save(_hotkeysPath, hk);
 
                 _appSettings.MinimizeToTray = TrayCheck.IsChecked == true;
+                _appSettings.SyncFolder = SyncFolderBox.Text.Trim();
+                _appSettings.SyncEnabled = SyncCheck.IsChecked == true && _appSettings.SyncFolder.Length > 0;
                 _appSettings.Save();
                 if (AutostartCheck.IsEnabled && AppSettings.StartsWithWindows != (AutostartCheck.IsChecked == true))
                     AppSettings.StartsWithWindows = AutostartCheck.IsChecked == true;
@@ -257,6 +261,19 @@ namespace YellowBlackEditor.Views
         private void AccentBox_GotFocus(object sender, RoutedEventArgs e) => SetActive(TargetField.Accent);
         private void TextBoxColor_GotFocus(object sender, RoutedEventArgs e) => SetActive(TargetField.Text);
         private void PanelBox_GotFocus(object sender, RoutedEventArgs e) => SetActive(TargetField.Panel);
+
+        private void PickSyncFolder_Click(object sender, RoutedEventArgs e)
+        {
+            using var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Папка обмена клиентами",
+                UseDescriptionForTitle = true,
+                SelectedPath = SyncFolderBox.Text
+            };
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+            SyncFolderBox.Text = dlg.SelectedPath;
+            SyncCheck.IsChecked = true;
+        }
 
         private void RecordHotkey_Click(object sender, RoutedEventArgs e)
         {

@@ -12,6 +12,7 @@ namespace YellowBlackEditor.ViewModels
         private bool _isSelected;
         private bool _isVisible = true;
         private bool _isHit;
+        private int _reminderState;
 
         public string Name { get => _name; set { _name = value; OnPropertyChanged(); } }
         public string FullPath { get; set; } = "";
@@ -23,6 +24,7 @@ namespace YellowBlackEditor.ViewModels
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
         public bool IsVisible { get => _isVisible; set { _isVisible = value; OnPropertyChanged(); } }
         public bool IsHit { get => _isHit; set { _isHit = value; OnPropertyChanged(); } }
+        public int ReminderState { get => _reminderState; set { if (_reminderState == value) return; _reminderState = value; OnPropertyChanged(); } }
 
         public string Glyph => Type switch
         {

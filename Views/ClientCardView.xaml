@@ -5,19 +5,29 @@
              xmlns:local="clr-namespace:YellowBlackEditor.Views"
              Foreground="{DynamicResource TextBrush}">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
         <Style x:Key="EmptyHint" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
-            <Setter Property="Margin" Value="0,2,0,0"/>
-            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Margin" Value="0,2,0,8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
-        <Style x:Key="SectionGap" TargetType="Border">
-            <Setter Property="Height" Value="32"/>
+
+        <Style x:Key="ItemCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush1}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,12,14,14"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
+
         <Style x:Key="CopyButton" TargetType="Button">
             <Setter Property="Width" Value="30"/>
             <Setter Property="Height" Value="30"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="ToolTip" Value="Копировать"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -43,126 +53,141 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+
+        <Style x:Key="Expander" TargetType="ToggleButton">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6">
+                            <TextBlock x:Name="ic" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource SubTextBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ic" Property="Text" Value="&#xE70D;"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource BorderBrush1}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate DataType="{x:Type m:ProjectTask}">
+            <StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Style="{DynamicResource DoneCheck}" IsChecked="{Binding Done}" ToolTip="Выполнено" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <TextBox x:Name="title" Grid.Column="1" Style="{DynamicResource FieldBox}" MinHeight="34" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="Этап. Enter — следующий" PreviewKeyDown="TaskTitle_PreviewKeyDown"/>
+                    <Button Grid.Column="2" Style="{DynamicResource IconButton}" Content="&#xE710;" ToolTip="Добавить вложенный этап" Margin="4,0,0,0"
+                            Click="AddSubtask_Click"/>
+                    <Button Grid.Column="3" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить этап" Click="RemoveTask_Click"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Children}" Margin="32,0,0,0" Focusable="False"/>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Done}" Value="True">
+                    <Setter TargetName="title" Property="Opacity" Value="0.55"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </UserControl.Resources>
 
-        <TabControl x:Name="Tabs" Style="{DynamicResource NavTabs}" Margin="28,4,28,0">
-            <TabItem>
-                <TabItem.Header>
-                    <TextBlock Text="Реквизиты"/>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="14"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="14"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+    <TabControl x:Name="Tabs" Style="{DynamicResource NavTabs}" Margin="28,4,28,0">
 
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="ИНН" Style="{DynamicResource FieldLabel}"/>
-                            <Grid>
-                                <TextBox x:Name="InnBox" Style="{DynamicResource FieldBox}" Text="{Binding Inn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                <Button Style="{StaticResource CopyButton}" ToolTip="Копировать ИНН" Tag="{Binding Inn}" Click="Copy_Click"/>
-                            </Grid>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="КПП" Style="{DynamicResource FieldLabel}"/>
-                            <Grid>
-                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Kpp, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                <Button Style="{StaticResource CopyButton}" ToolTip="Копировать КПП" Tag="{Binding Kpp}" Click="Copy_Click"/>
-                            </Grid>
-                        </StackPanel>
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="ОГРН или ОГРНИП" Style="{DynamicResource FieldLabel}"/>
-                            <Grid>
-                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Ogrn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                <Button Style="{StaticResource CopyButton}" ToolTip="Копировать ОГРН" Tag="{Binding Ogrn}" Click="Copy_Click"/>
-                            </Grid>
-                        </StackPanel>
-                        <StackPanel Grid.Column="6">
-                            <TextBlock Text="ОКПО" Style="{DynamicResource FieldLabel}"/>
-                            <Grid>
-                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Okpo, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                <Button Style="{StaticResource CopyButton}" ToolTip="Копировать ОКПО" Tag="{Binding Okpo}" Click="Copy_Click"/>
-                            </Grid>
-                        </StackPanel>
+        <TabItem Header="Реквизиты">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid Margin="0,16,0,24" MaxWidth="1040">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="2" Grid.ColumnSpan="5">
-                            <TextBlock Text="Адрес" Style="{DynamicResource FieldLabel}"/>
-                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Row="2" Grid.Column="6">
-                            <TextBlock Text="Почта" Style="{DynamicResource FieldLabel}"/>
-                            <Grid>
-                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                <Button Style="{StaticResource CopyButton}" ToolTip="Копировать почту" Tag="{Binding Email}" Click="Copy_Click"/>
-                            </Grid>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="4" Grid.ColumnSpan="7">
-                            <TextBlock Text="Комментарий" Style="{DynamicResource FieldLabel}"/>
-                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" VerticalContentAlignment="Top" Padding="10,8"
-                                     Tag="Режим работы, особенности, договорённости"/>
-                        </StackPanel>
-                    </Grid>
-
+                    <StackPanel>
+                        <TextBlock Text="ИНН" Style="{DynamicResource FieldLabel}"/>
+                        <Grid>
+                            <TextBox x:Name="InnBox" Style="{DynamicResource FieldBox}" Text="{Binding Inn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Inn}" Click="Copy_Click"/>
+                        </Grid>
                     </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Контакты"/>
-                        <TextBlock Text="{Binding Contacts.Count}" Margin="7,0,0,0" Opacity="0.6">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Contacts.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="КПП" Style="{DynamicResource FieldLabel}"/>
+                        <Grid>
+                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Kpp, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Kpp}" Click="Copy_Click"/>
+                        </Grid>
                     </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="ОГРН или ОГРНИП" Style="{DynamicResource FieldLabel}"/>
+                        <Grid>
+                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Ogrn, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Ogrn}" Click="Copy_Click"/>
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6">
+                        <TextBlock Text="ОКПО" Style="{DynamicResource FieldLabel}"/>
+                        <Grid>
+                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Okpo, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Okpo}" Click="Copy_Click"/>
+                        </Grid>
+                    </StackPanel>
 
-                    <TextBlock Text="Добавьте телефон, по которому связываться с клиентом.">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource EmptyHint}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Contacts.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <Grid>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Contacts.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Style>
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="5">
+                        <TextBlock Text="Адрес" Style="{DynamicResource FieldLabel}"/>
+                        <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="6">
+                        <TextBlock Text="Почта" Style="{DynamicResource FieldLabel}"/>
+                        <Grid>
+                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Email}" Click="Copy_Click"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="4" Grid.ColumnSpan="7">
+                        <TextBlock Text="Комментарий" Style="{DynamicResource FieldLabel}"/>
+                        <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" VerticalContentAlignment="Top" Padding="10,8"
+                                 Tag="Режим работы, особенности, договорённости"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Контакты"/>
+                    <TextBlock x:Name="ContactsCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="ContactsEmpty" Text="Добавьте телефон, по которому связываться с клиентом." Style="{StaticResource EmptyHint}"/>
+                    <Grid x:Name="ContactsHeader">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.1*"/>
                             <ColumnDefinition Width="12"/>
@@ -190,7 +215,7 @@
                                     <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
                                     <Grid Grid.Column="2">
                                         <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
-                                        <Button Style="{StaticResource CopyButton}" ToolTip="Копировать номер" Tag="{Binding Phone}" Click="Copy_Click"/>
+                                        <Button Style="{StaticResource CopyButton}" Tag="{Binding Phone}" Click="Copy_Click"/>
                                     </Grid>
                                     <TextBox Grid.Column="4" Style="{DynamicResource FieldBox}" Text="{Binding Role, UpdateSourceTrigger=PropertyChanged}"/>
                                     <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить контакт"
@@ -199,53 +224,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить контакт" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddContact_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
 
-                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить контакт" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddContact_Click"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Удалённый доступ"/>
-                        <TextBlock Text="{Binding Accesses.Count}" Margin="7,0,0,0" Opacity="0.6">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Accesses.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
-
-                    <TextBlock Text="Добавьте точку: где стоит компьютер и как к нему подключиться.">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource EmptyHint}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Accesses.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Точки"/>
+                    <TextBlock x:Name="PointsCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="PointsEmpty" Text="Точка — это компьютер или касса клиента: как к ней подключиться, телефоны и пароли." Style="{StaticResource EmptyHint}"/>
                     <ItemsControl x:Name="AccessList" ItemsSource="{Binding Accesses}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type m:RemoteAccess}">
-                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
-                                        CornerRadius="8" Padding="14,12,14,14" Margin="0,0,0,10">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="12"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
+                                <Border Style="{StaticResource ItemCard}">
+                                    <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -257,273 +255,348 @@
                                             <StackPanel>
                                                 <TextBlock Text="Точка" Style="{DynamicResource FieldLabel}"/>
                                                 <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Point, UpdateSourceTrigger=PropertyChanged}"
-                                                         Tag="Магазин, касса, офис"/>
+                                                         Tag="Магазин на Ленина, касса 1" FontWeight="SemiBold"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="Программа" Style="{DynamicResource FieldLabel}"/>
                                                 <ComboBox Style="{DynamicResource AccentCombo}" Margin="0" Height="38"
-                                                          ItemsSource="{x:Static m:RemoteAccess.Programs}"
-                                                          SelectedItem="{Binding Program}"/>
+                                                          ItemsSource="{x:Static m:RemoteAccess.Programs}" SelectedItem="{Binding Program}"/>
                                             </StackPanel>
                                             <Button Grid.Column="3" Style="{DynamicResource SecondaryButton}" Height="38" Margin="12,0,0,0" VerticalAlignment="Bottom"
                                                     Click="Connect_Click" ToolTip="Скопировать ID и открыть программу">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,1,8,0"/>
                                                     <TextBlock VerticalAlignment="Center">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Text" Value="Открыть программу"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding Program}" Value="AnyDesk">
-                                                                                <Setter Property="Text" Value="Подключиться"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="Открыть программу"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Program}" Value="AnyDesk">
+                                                                        <Setter Property="Text" Value="Подключиться"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                             </Button>
                                             <Button Grid.Column="4" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить точку"
-                                                    Margin="6,0,0,0" VerticalAlignment="Bottom" Click="RemoveAccess_Click"/>
+                                                    Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveAccess_Click"/>
                                         </Grid>
-                                        <Grid Grid.Row="2">
+
+                                        <Grid Margin="0,12,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="12"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="12"/>
-                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="1.3*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Text="ID" Style="{DynamicResource FieldLabel}"/>
                                                 <Grid>
                                                     <TextBox Style="{DynamicResource FieldBox}" Text="{Binding AccessId, UpdateSourceTrigger=PropertyChanged}"
                                                              FontFamily="Consolas" FontSize="15" Padding="10,0,36,0"/>
-                                                    <Button Style="{StaticResource CopyButton}" ToolTip="Копировать ID" Tag="{Binding AccessId}" Click="Copy_Click"/>
+                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding AccessId}" Click="Copy_Click"/>
                                                 </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="Пароль" Style="{DynamicResource FieldLabel}"/>
                                                 <Grid>
-                                                    <PasswordBox x:Name="Pwd" Style="{DynamicResource FieldPassword}" Padding="10,0,68,0"
-                                                                 Loaded="Pwd_Loaded" PasswordChanged="Pwd_PasswordChanged" IsVisibleChanged="Pwd_IsVisibleChanged"/>
-                                                    <TextBox x:Name="PwdText" Style="{DynamicResource FieldBox}" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
-                                                             FontFamily="Consolas" FontSize="15" Padding="10,0,68,0" Visibility="Collapsed"/>
-                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,3,0">
-                                                        <ToggleButton IsChecked="{Binding ShowPassword}" Width="30" Height="30" ToolTip="Показать пароль">
-                                                            <ToggleButton.Template>
-                                                                <ControlTemplate TargetType="ToggleButton">
-                                                                    <Border x:Name="bd" Background="Transparent" CornerRadius="6">
-                                                                        <TextBlock x:Name="ic" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                                                                   Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource BorderBrush1}"/>
-                                                                        </Trigger>
-                                                                        <Trigger Property="IsChecked" Value="True">
-                                                                            <Setter TargetName="ic" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </ToggleButton.Template>
-                                                        </ToggleButton>
-                                                        <Button Style="{StaticResource CopyButton}" Margin="0" ToolTip="Копировать пароль" Tag="{Binding Password}" Click="Copy_Click"/>
-                                                    </StackPanel>
+                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                                                             FontFamily="Consolas" FontSize="15" Padding="10,0,36,0"/>
+                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding Password}" Click="Copy_Click"/>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Телефоны точки" Style="{DynamicResource FieldLabel}"/>
+                                                <Grid>
+                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Phones, UpdateSourceTrigger=PropertyChanged}"
+                                                             Tag="Можно несколько через запятую" Padding="10,0,36,0"/>
+                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding Phones}" Click="Copy_Click"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="Комментарий" Style="{DynamicResource FieldLabel}" Margin="2,12,0,5"/>
+                                        <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" Tag="Какой компьютер, кто за ним сидит"/>
+
+                                        <TextBlock Text="Другие пароли" Style="{DynamicResource FieldLabel}" Margin="2,14,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding Logins}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type m:Credential}">
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="10"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="10"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="К чему: Windows, 1С, роутер"/>
+                                                        <Grid Grid.Column="2">
+                                                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}" Tag="Логин" Padding="10,0,36,0"/>
+                                                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Login}" Click="Copy_Click"/>
+                                                        </Grid>
+                                                        <Grid Grid.Column="4">
+                                                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" Tag="Пароль"
+                                                                     FontFamily="Consolas" FontSize="15" Padding="10,0,36,0"/>
+                                                            <Button Style="{StaticResource CopyButton}" Tag="{Binding Password}" Click="Copy_Click"/>
+                                                        </Grid>
+                                                        <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить пароль"
+                                                                Margin="4,0,0,0" Click="RemovePointLogin_Click"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить пароль" HorizontalAlignment="Left" Margin="-10,0,0,0" Click="AddPointLogin_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить точку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddAccess_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Доступы"/>
+                    <TextBlock x:Name="CredentialsCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="CredentialsEmpty" Text="Логины и пароли от сайтов и кабинетов: ОФД, ЧЗ, ЕГАИС, почта. Ссылка открывается в браузере одним кликом." Style="{StaticResource EmptyHint}"/>
+                    <ItemsControl x:Name="CredentialsList" ItemsSource="{Binding Credentials}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type m:Credential}">
+                                <Border Style="{StaticResource ItemCard}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="К чему доступ" Style="{DynamicResource FieldLabel}"/>
+                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                                         Tag="Личный кабинет ОФД" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Ссылка" Style="{DynamicResource FieldLabel}"/>
+                                                <Grid>
+                                                    <TextBox x:Name="urlBox" Style="{DynamicResource FieldBox}" Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}"
+                                                             Tag="https://lk.ofd.ru" LostKeyboardFocus="UrlBox_LostKeyboardFocus"/>
+                                                    <Border x:Name="linkView" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                            BorderThickness="1" CornerRadius="6" Visibility="Collapsed">
+                                                        <Grid>
+                                                            <Button Click="OpenLink_Click" HorizontalAlignment="Left" Margin="10,0,40,0" ToolTip="Открыть в браузере" IsTabStop="False">
+                                                                <Button.Template>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <TextBlock x:Name="t" Text="{Binding Url}" Foreground="{DynamicResource AccentBrush}" FontSize="14"
+                                                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Cursor="Hand"/>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="t" Property="TextDecorations" Value="Underline"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Button.Template>
+                                                            </Button>
+                                                            <Button Style="{DynamicResource IconButton}" Content="&#xE70F;" Width="30" Height="30" HorizontalAlignment="Right"
+                                                                    Margin="0,0,3,0" ToolTip="Изменить ссылку" Click="EditLink_Click" IsTabStop="False"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <Button Grid.Column="3" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить доступ"
+                                                    Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveCredential_Click"/>
+                                        </Grid>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="1.3*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Логин" Style="{DynamicResource FieldLabel}"/>
+                                                <Grid>
+                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}" Padding="10,0,36,0"/>
+                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding Login}" Click="Copy_Click"/>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Пароль" Style="{DynamicResource FieldLabel}"/>
+                                                <Grid>
+                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                                                             FontFamily="Consolas" FontSize="15" Padding="10,0,36,0"/>
+                                                    <Button Style="{StaticResource CopyButton}" Tag="{Binding Password}" Click="Copy_Click"/>
                                                 </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="4">
                                                 <TextBlock Text="Комментарий" Style="{DynamicResource FieldLabel}"/>
-                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
-                                                         Tag="Какой компьютер, кто за ним сидит"/>
+                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                         </Grid>
-                                    </Grid>
+                                    </StackPanel>
                                 </Border>
                                 <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding ShowPassword}" Value="True">
-                                        <Setter TargetName="Pwd" Property="Visibility" Value="Hidden"/>
-                                        <Setter TargetName="PwdText" Property="Visibility" Value="Visible"/>
+                                    <DataTrigger Binding="{Binding ShowLink}" Value="True">
+                                        <Setter TargetName="linkView" Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить доступ" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddCredential_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
 
-                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить точку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddAccess_Click"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Проекты"/>
-                        <TextBlock Text="{Binding Projects.Count}" Margin="7,0,0,0" Opacity="0.6">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Projects.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
-                        <TextBlock Text="Добавьте проект: внедрение, обновление, переезд на новую кассу.">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource EmptyHint}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Projects.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}" Focusable="False">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type m:ClientProject}">
-                                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
-                                            CornerRadius="8" Padding="14,12,14,14" Margin="0,0,0,10">
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Проекты"/>
+                    <TextBlock x:Name="ProjectsCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="ProjectsEmpty" Text="Проект — большая задача по клиенту: внедрение, переезд на новую кассу. Внутри этапы с подпунктами." Style="{StaticResource EmptyHint}"/>
+                    <ItemsControl x:Name="ProjectsList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type m:ClientProject}">
+                                <Border x:Name="card" Style="{StaticResource ItemCard}">
+                                    <StackPanel>
                                         <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="12"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="170"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="140"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <ToggleButton Style="{StaticResource Expander}" IsChecked="{Binding IsExpanded}" Margin="-6,0,4,4" VerticalAlignment="Bottom"
+                                                          ToolTip="Показать или скрыть этапы"/>
+                                            <StackPanel Grid.Column="1">
+                                                <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="Проект" Style="{DynamicResource FieldLabel}"/>
-                                                    <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"
-                                                             Tag="Например, переход на новую кассу"/>
+                                                    <TextBlock Text="{Binding Progress}" Style="{DynamicResource FieldLabel}" Margin="10,0,0,5" Foreground="{DynamicResource AccentBrush}"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Статус" Style="{DynamicResource FieldLabel}"/>
-                                                    <ComboBox Style="{DynamicResource AccentCombo}" Margin="0" Height="38"
-                                                              ItemsSource="{x:Static m:ClientProject.Statuses}" SelectedItem="{Binding Status}"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="4">
-                                                    <TextBlock Text="Срок" Style="{DynamicResource FieldLabel}"/>
-                                                    <TextBox Style="{DynamicResource DeadlineBox}" Text="{Binding DeadlineText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг"/>
-                                                </StackPanel>
-                                                <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
-                                                        Margin="6,0,0,2" VerticalAlignment="Bottom" Click="RemoveProject_Click"/>
-                                            </Grid>
-                                            <StackPanel Grid.Row="2">
-                                                <TextBlock Text="Что сделать, на чём остановились" Style="{DynamicResource FieldLabel}"/>
-                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
-                                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="38" VerticalContentAlignment="Top" Padding="10,9"/>
+                                                <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"
+                                                         Tag="Переход на новую кассу"/>
                                             </StackPanel>
+                                            <StackPanel Grid.Column="3">
+                                                <TextBlock Text="Статус" Style="{DynamicResource FieldLabel}"/>
+                                                <ComboBox Style="{DynamicResource AccentCombo}" Margin="0" Height="38"
+                                                          ItemsSource="{x:Static m:ClientProject.Statuses}" SelectedItem="{Binding Status}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="5">
+                                                <TextBlock Text="Срок" Style="{DynamicResource FieldLabel}"/>
+                                                <Button Style="{DynamicResource FieldButton}" Click="Deadline_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE787;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"
+                                                                   Foreground="{DynamicResource SubTextBrush}"/>
+                                                        <TextBlock Text="{Binding DeadlineHuman}"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                            <Button Grid.Column="6" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить проект"
+                                                    Margin="4,0,0,2" VerticalAlignment="Bottom" Click="RemoveProject_Click"/>
                                         </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить проект" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddProject_Click"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Напоминания"/>
-                        <TextBlock x:Name="RemindersCount" Margin="7,0,0,0" Opacity="0.6"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
-                        <TextBlock Text="Добавьте напоминание: перезвонить, продлить лицензию, проверить обмен. В срок придёт уведомление Windows.">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource EmptyHint}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Reminders.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <Grid Margin="0,0,0,6">
-                            <Grid.Style>
-                                <Style TargetType="Grid">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Reminders.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Grid.Style>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="34"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="12"/>
-                                <ColumnDefinition Width="190"/>
-                                <ColumnDefinition Width="84"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="1" Text="Что сделать" Style="{DynamicResource FieldLabel}"/>
-                            <TextBlock Grid.Column="3" Text="Когда напомнить" Style="{DynamicResource FieldLabel}"/>
-                        </Grid>
-                        <ItemsControl x:Name="RemindersList" ItemsSource="{Binding Reminders}" Focusable="False">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type m:Reminder}">
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="34"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="190"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <CheckBox Style="{DynamicResource DoneCheck}" IsChecked="{Binding Done}" ToolTip="Выполнено" HorizontalAlignment="Left"/>
-                                        <TextBox x:Name="txt" Grid.Column="1" Style="{DynamicResource FieldBox}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
-                                                 Tag="Перезвонить по поводу обмена"/>
-                                        <TextBox Grid.Column="3" Style="{DynamicResource DateBox}" Text="{Binding DueText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг чч:мм"/>
-                                        <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="6,0,0,0">
-                                            <Button Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Выбрать день и время" Click="DuePresets_Click"/>
-                                            <TextBlock x:Name="late" Text="Срок прошёл" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"
-                                                       Margin="6,0,0,0" Visibility="Collapsed"/>
+                                        <StackPanel Margin="30,12,0,0" Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="На чём остановились" Style="{DynamicResource FieldLabel}"/>
+                                            <TextBox Style="{DynamicResource FieldBox}" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
+                                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="38" VerticalContentAlignment="Top" Padding="10,9"/>
+                                            <TextBlock Text="Этапы" Style="{DynamicResource FieldLabel}" Margin="2,14,0,6"/>
+                                            <ItemsControl ItemsSource="{Binding Tasks}" Focusable="False"/>
+                                            <Button Style="{DynamicResource TextButton}" Content="+ Добавить этап" HorizontalAlignment="Left" Margin="-10,0,0,0" Click="AddTask_Click"/>
                                         </StackPanel>
-                                        <Button Grid.Column="5" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить напоминание" Margin="4,0,0,0"
-                                                Click="RemoveReminder_Click"/>
-                                    </Grid>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding Done}" Value="True">
-                                            <Setter TargetName="txt" Property="Opacity" Value="0.5"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsOverdue}" Value="True">
-                                            <Setter TargetName="late" Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить напоминание" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddReminder_Click"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Заметки"/>
-                        <TextBlock x:Name="NotesCount" Margin="7,0,0,0" Opacity="0.6"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,16,0,24" MaxWidth="1040" HorizontalAlignment="Stretch">
+                                    </StackPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsClosed}" Value="True">
+                                        <Setter TargetName="card" Property="Opacity" Value="0.65"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить проект" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddProject_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
 
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Напоминания"/>
+                    <TextBlock x:Name="RemindersCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="RemindersEmpty" Text="Перезвонить, продлить лицензию, проверить обмен. В срок придёт уведомление Windows." Style="{StaticResource EmptyHint}"/>
+                    <ItemsControl x:Name="RemindersList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type m:Reminder}">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="230"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Style="{DynamicResource DoneCheck}" IsChecked="{Binding Done}" ToolTip="Выполнено" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txt" Grid.Column="1" Style="{DynamicResource FieldBox}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                             Tag="Что напомнить"/>
+                                    <Button Grid.Column="3" Style="{DynamicResource FieldButton}" Click="DuePresets_Click" ToolTip="Выбрать день и время">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="ic" Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"
+                                                       Foreground="{DynamicResource SubTextBrush}"/>
+                                            <TextBlock x:Name="due" Text="{Binding DueHuman}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="4" Style="{DynamicResource DangerIconButton}" Content="&#xE74D;" ToolTip="Удалить напоминание" Margin="4,0,0,0"
+                                            Click="RemoveReminder_Click"/>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Done}" Value="True">
+                                        <Setter TargetName="txt" Property="Opacity" Value="0.5"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                                        <Setter TargetName="due" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                        <Setter TargetName="ic" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить напоминание" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddReminder_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Заметки"/>
+                    <TextBlock x:Name="NotesCount" Margin="7,0,0,0" Opacity="0.6"/>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
                     <TextBlock x:Name="NotesEmpty" Text="Здесь будут заметки: что настраивали, о чём договорились." Style="{StaticResource EmptyHint}"/>
                     <ItemsControl x:Name="NotesList" Focusable="False">
                         <ItemsControl.ItemTemplate>
@@ -556,9 +629,9 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                        <Button Style="{DynamicResource TextButton}" Content="+ Добавить заметку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddNote_Click"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+                    <Button Style="{DynamicResource TextButton}" Content="+ Добавить заметку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddNote_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </UserControl>

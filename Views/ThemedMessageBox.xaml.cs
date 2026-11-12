@@ -28,10 +28,17 @@ namespace YellowBlackEditor.Views
             {
                 CancelBtn.Content = cancelText;
                 CancelBtn.Visibility = Visibility.Visible;
-                if (image == MessageBoxImage.Warning)
+                if (okText == "Удалить")
                 {
-                    OkBtn.IsDefault = false;
-                    CancelBtn.IsDefault = true;
+                    _deleteConfirm = true;
+                    KeysHint.Text = "Del или Enter — удалить, Esc — отмена";
+                    KeysHint.Visibility = Visibility.Visible;
+                    PreviewKeyDown += (_, e) =>
+                    {
+                        if (e.Key != System.Windows.Input.Key.Delete || e.IsRepeat || !_deleteConfirm) return;
+                        e.Handled = true;
+                        DialogResult = true;
+                    };
                 }
             }
             else
@@ -39,6 +46,8 @@ namespace YellowBlackEditor.Views
                 OkBtn.IsCancel = true;
             }
         }
+
+        private bool _deleteConfirm;
 
         private void Ok_Click(object sender, RoutedEventArgs e) => DialogResult = true;
         private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;

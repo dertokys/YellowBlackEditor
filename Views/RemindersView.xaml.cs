@@ -9,7 +9,6 @@ namespace YellowBlackEditor.Views
     {
         public Reminder Item { get; init; } = new();
         public NodeViewModel? Client { get; init; }
-        public ClientCard? Card { get; init; }
         public NodeViewModel? Note { get; init; }
         public string ClientName => Client?.Name ?? "";
         public Visibility ClientVisibility => Client == null ? Visibility.Collapsed : Visibility.Visible;
@@ -36,7 +35,7 @@ namespace YellowBlackEditor.Views
             AddRow.DataContext = _draft;
         }
 
-        private static Reminder NewDraft() => new() { Due = DateTime.Today.AddDays(1).AddHours(10) };
+        private static Reminder NewDraft() => new() { Due = DateText.DefaultReminderTime() };
 
         public void Show(IReadOnlyList<ReminderEntry> entries)
         {
@@ -112,11 +111,6 @@ namespace YellowBlackEditor.Views
             {
                 StatusMessage?.Invoke("Напишите, что напомнить");
                 NewText.Focus();
-                return;
-            }
-            if (_draft.DueInvalid)
-            {
-                StatusMessage?.Invoke("Укажите дату в виде 15.11.2026 10:00");
                 return;
             }
             var r = _draft;

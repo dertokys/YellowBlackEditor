@@ -121,6 +121,7 @@ namespace YellowBlackEditor
             ExpandAndSelectFirstDocument();
             if (_currentDocNode == null && _currentClientNode == null) ShowEmpty(null);
             InitReminders();
+            InitSync();
         }
 
         private void ApplyFontSizes()
@@ -274,6 +275,7 @@ namespace YellowBlackEditor
                 HotkeyManager.ApplyToWindow(this, _hotkeys, CreateSectionCmd, CreateDocumentCmd, NavPrevCmd, NavNextCmd, NavParentCmd, NavChildCmd);
                 ApplyFontSizes();
                 _appSettings = AppSettings.Load();
+                ApplySyncSettings();
                 Status("Настройки сохранены");
             }
         }
@@ -349,22 +351,44 @@ namespace YellowBlackEditor
 
         private void LoadChildrenRecursive(NodeViewModel parent, string directory)
         {
-            foreach (var dir in Directory.GetDirectories(directory).OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
-            {
-                var dirName = Path.GetFileName(dir);
-                if (dirName.Equals("_assets", StringComparison.OrdinalIgnoreCase)) continue;
+            var dirs = Directory.GetDirectories(directory)
+                .Where(d => !Path.GetFileName(d).Equals("_assets", StringComparison.OrdinalIgnoreCase))
+                .Select(d => (Path: d, IsClient: ClientStore.IsClientFolder(d)))
+                .ToList();
+            var ordered = dirs.Where(d => d.IsClient).OrderBy(d => Path.GetFileName(d.Path), StringComparer.CurrentCultureIgnoreCase)
+                .Concat(dirs.Where(d => !d.IsClient).OrderByDescending(d => CreatedAt(d.Path)));
 
+            foreach (var (dir, isClient) in ordered)
+            {
                 var node = new NodeViewModel
                 {
-                    Name = dirName,
+                    Name = Path.GetFileName(dir),
                     FullPath = dir,
-                    Type = ClientStore.IsClientFolder(dir) ? NodeType.Client : NodeType.Document,
+                    Type = isClient ? NodeType.Client : NodeType.Document,
                     Parent = parent
                 };
                 parent.Children.Add(node);
-                LoadAttachments(node);
                 LoadChildrenRecursive(node, dir);
+                LoadAttachments(node);
             }
+        }
+
+        private static DateTime CreatedAt(string folder)
+        {
+            try { return Directory.GetCreationTimeUtc(folder); } catch { return DateTime.MinValue; }
+        }
+
+        private static int InsertIndex(NodeViewModel parent, NodeType type, string name)
+        {
+            var clients = parent.Children.Count(c => c.Type == NodeType.Client);
+            if (type == NodeType.Document) return clients;
+            if (type == NodeType.Client)
+            {
+                var i = 0;
+                while (i < clients && string.Compare(parent.Children[i].Name, name, StringComparison.CurrentCultureIgnoreCase) < 0) i++;
+                return i;
+            }
+            return parent.Children.Count;
         }
 
         private void LoadAttachments(NodeViewModel docNode)
@@ -484,7 +508,7 @@ namespace YellowBlackEditor
 
         private void OnNodeSelected(NodeViewModel? node)
         {
-            if (node == null && _remindersMode) return;
+            if (TryRebind(node)) return;
             var previous = _currentDocNode ?? _currentClientNode;
             if (_revertingSelection)
             {
@@ -500,7 +524,6 @@ namespace YellowBlackEditor
                 }
                 return;
             }
-            if (node != null) HideReminders();
             _saveTimer.Stop();
 
             _currentDocNode = null;
@@ -671,11 +694,12 @@ namespace YellowBlackEditor
                 FormatBar.IsEnabled = false;
                 RenameBtn.Visibility = Visibility.Visible;
                 _emptyStateNode = null;
-                ClientView.Show(node, card);
+                ClientView.Show(node, card, ClientRemindersFor(node, card));
 
                 CurrentKindText.Text = "Клиент";
                 CurrentFileText.Text = node.Name;
                 DirtyText.Text = "";
+                SyncSoon();
             }
             catch (Exception ex)
             {
@@ -697,6 +721,7 @@ namespace YellowBlackEditor
         {
             if (_currentClient != null) _currentClient.Changed -= CurrentClient_Changed;
             _currentClient = null;
+            DetachClientReminders();
         }
 
         private void UpdateTitle()
@@ -812,7 +837,6 @@ namespace YellowBlackEditor
                 ClientStore.Save(_currentClientNode.FullPath, _currentClient);
                 _clientDirty = false;
                 _contentCache.Remove(_currentClientNode.FullPath);
-                _cardCache.Remove(_currentClientNode.FullPath);
                 MarkSaved();
                 if (_reminderTimer != null) UpdateBell(CollectReminders());
                 return true;
@@ -1004,7 +1028,6 @@ namespace YellowBlackEditor
             ShowEmpty(null);
             LoadTree();
             LoadGeneralReminders();
-            HideReminders();
             ExpandAndSelectFirstDocument();
             RefreshReminders();
             Status("Рабочая папка изменена");
@@ -1358,7 +1381,7 @@ namespace YellowBlackEditor
                 if (parent == null) RootNodes.Add(node);
                 else
                 {
-                    parent.Children.Add(node);
+                    parent.Children.Insert(InsertIndex(parent, type, node.Name), node);
                     parent.IsExpanded = true;
                 }
                 SelectNode(node);

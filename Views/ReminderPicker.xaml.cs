@@ -17,6 +17,7 @@ namespace YellowBlackEditor.Views
         private Popup? _popup;
         private Action<DateTime, string>? _onOk;
         private Action? _onRemove;
+        private bool _dateOnly;
 
         public ReminderPicker()
         {
@@ -25,9 +26,11 @@ namespace YellowBlackEditor.Views
         }
 
         public static void Open(FrameworkElement anchor, DateTime? initial, string? text, bool showText, bool canRemove,
-            Action<DateTime, string> onOk, Action? onRemove = null)
+            Action<DateTime, string> onOk, Action? onRemove = null, bool dateOnly = false, string removeText = "Убрать напоминание")
         {
             var picker = new ReminderPicker();
+            picker._dateOnly = dateOnly;
+            picker.RemoveBtn.Content = removeText;
             picker.Init(initial, text, showText, canRemove, onOk, onRemove);
             var popup = new Popup
             {
@@ -62,9 +65,15 @@ namespace YellowBlackEditor.Views
             ReminderText.Text = text ?? "";
             RemoveBtn.Visibility = canRemove ? Visibility.Visible : Visibility.Collapsed;
 
-            var start = initial ?? DateTime.Today.AddDays(1).AddHours(10);
+            var start = initial ?? (_dateOnly ? DateTime.Today : DateText.DefaultReminderTime());
             _date = start.Date;
-            _time = new TimeSpan(start.Hour, start.Minute, 0);
+            _time = _dateOnly ? TimeSpan.Zero : new TimeSpan(start.Hour, start.Minute, 0);
+            if (_dateOnly)
+            {
+                TimeLabel.Visibility = Visibility.Collapsed;
+                Times.Visibility = Visibility.Collapsed;
+                CustomTimePanel.Visibility = Visibility.Collapsed;
+            }
 
             BuildDays();
             BuildTimes();
@@ -184,22 +193,13 @@ namespace YellowBlackEditor.Views
         private void CustomTime_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (_syncing) return;
-            var t = CustomTime.Text.Trim().Replace('.', ':').Replace('-', ':');
+            var t = CustomTime.Text.Trim();
             if (t.Length == 0) return;
-            _time = TryParseTime(t);
+            _time = DateText.TryParseTime(t);
             _syncing = true;
             foreach (System.Windows.Controls.RadioButton c in Times.Children) c.IsChecked = _time != null && (TimeSpan)c.Tag == _time.Value;
             _syncing = false;
             UpdateResult();
-        }
-
-        private static TimeSpan? TryParseTime(string t)
-        {
-            if (int.TryParse(t, out var h) && h is >= 0 and <= 23) return new TimeSpan(h, 0, 0);
-            var parts = t.Split(':');
-            if (parts.Length == 2 && int.TryParse(parts[0], out h) && int.TryParse(parts[1], out var m) && h is >= 0 and <= 23 && m is >= 0 and <= 59)
-                return new TimeSpan(h, m, 0);
-            return null;
         }
 
         private DateTime? Result => _date != null && _time != null ? _date.Value.Add(_time.Value) : null;
@@ -208,14 +208,14 @@ namespace YellowBlackEditor.Views
         {
             if (_date == null) return "Выберите день или введите дату в виде 15.11.2026.";
             if (_time == null) return "Выберите время или введите его в виде 14:30.";
-            if (Result <= DateTime.Now) return "Это время уже прошло, выберите позже.";
+            if (!_dateOnly && Result <= DateTime.Now) return "Это время уже прошло, выберите позже.";
             return null;
         }
 
         private void UpdateResult()
         {
             var r = Result;
-            ResultText.Text = r != null ? "Напомню " + DateText.Human(r.Value) : "";
+            ResultText.Text = r == null ? "" : _dateOnly ? "Срок: " + DateText.HumanDate(r.Value) : "Напомню " + DateText.Human(r.Value);
             ErrorText.Visibility = Visibility.Collapsed;
         }
 

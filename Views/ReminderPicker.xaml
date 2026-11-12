@@ -45,7 +45,7 @@
             <TextBlock Text="День" Style="{DynamicResource FieldLabel}"/>
             <UniformGrid x:Name="Days" Columns="6" Margin="0,0,-6,4"/>
 
-            <TextBlock Text="Время" Style="{DynamicResource FieldLabel}" Margin="2,6,0,5"/>
+            <TextBlock x:Name="TimeLabel" Text="Время" Style="{DynamicResource FieldLabel}" Margin="2,6,0,5"/>
             <UniformGrid x:Name="Times" Columns="6" Margin="0,0,-6,4"/>
 
             <Grid Margin="0,6,0,0">
@@ -56,11 +56,11 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Другая дата" Style="{DynamicResource FieldLabel}"/>
-                    <TextBox x:Name="CustomDate" Style="{DynamicResource FieldBox}" Tag="дд.мм.гггг" TextChanged="CustomDate_TextChanged"/>
+                    <TextBox x:Name="CustomDate" Style="{DynamicResource FieldBox}" Tag="15.11.2026 или 15 11" TextChanged="CustomDate_TextChanged"/>
                 </StackPanel>
-                <StackPanel Grid.Column="2">
+                <StackPanel x:Name="CustomTimePanel" Grid.Column="2">
                     <TextBlock Text="Своё время" Style="{DynamicResource FieldLabel}"/>
-                    <TextBox x:Name="CustomTime" Style="{DynamicResource FieldBox}" Tag="чч:мм" TextChanged="CustomTime_TextChanged"/>
+                    <TextBox x:Name="CustomTime" Style="{DynamicResource FieldBox}" Tag="1730" TextChanged="CustomTime_TextChanged"/>
                 </StackPanel>
             </Grid>
 

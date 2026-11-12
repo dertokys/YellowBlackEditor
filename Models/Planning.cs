@@ -1,4 +1,7 @@
+using System.Collections;
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text.Json.Serialization;
 
 namespace YellowBlackEditor.Models
@@ -22,17 +25,103 @@ namespace YellowBlackEditor.Models
         public static bool TryParse(string text, bool withTime, out DateTime? value)
         {
             value = null;
-            var t = (text ?? "").Trim();
+            var t = (text ?? "").Trim().ToLowerInvariant();
             if (t.Length == 0) return true;
-            if (DateTime.TryParseExact(t, Formats, CultureInfo.GetCultureInfo("ru-RU"), DateTimeStyles.AllowWhiteSpaces, out var d))
+
+            DateTime? baseDay = null;
+            if (t.StartsWith("сегодня")) { baseDay = DateTime.Today; t = t.Substring(7); }
+            else if (t.StartsWith("завтра")) { baseDay = DateTime.Today.AddDays(1); t = t.Substring(6); }
+
+            var groups = Regex.Matches(t, @"\d+").Select(m => m.Value).ToList();
+            if (baseDay != null)
             {
-                if (!t.Contains(' ') && withTime) d = d.Date.AddHours(10);
-                var datePart = t.Split(' ')[0];
-                if (datePart.Count(c => c == '.') == 1 && d.Date < DateTime.Today) d = d.AddYears(1);
-                value = d;
+                var time = groups.Count == 0 ? new TimeSpan(10, 0, 0) : TryParseTime(string.Join(" ", groups));
+                if (time == null) return false;
+                value = baseDay.Value.Add(withTime ? time.Value : TimeSpan.Zero);
                 return true;
             }
-            return false;
+
+            if (groups.Count == 1)
+            {
+                var g = groups[0];
+                groups = g.Length switch
+                {
+                    4 => new List<string> { g[..2], g[2..] },
+                    6 => new List<string> { g[..2], g[2..4], g[4..] },
+                    8 => new List<string> { g[..2], g[2..4], g[4..] },
+                    _ => groups
+                };
+            }
+            if (groups.Count < 2) return false;
+
+            int day = int.Parse(groups[0]), month = int.Parse(groups[1]);
+            var year = DateTime.Today.Year;
+            var explicitYear = false;
+            var rest = groups.Skip(2).ToList();
+            if (rest.Count == 1 || rest.Count == 3 || (rest.Count >= 1 && rest[0].Length == 4))
+            {
+                year = int.Parse(rest[0]);
+                if (year < 100) year += 2000;
+                explicitYear = true;
+                rest = rest.Skip(1).ToList();
+            }
+
+            var timeOfDay = TimeSpan.Zero;
+            if (withTime)
+            {
+                timeOfDay = new TimeSpan(10, 0, 0);
+                if (rest.Count > 0)
+                {
+                    var parsed = TryParseTime(string.Join(" ", rest));
+                    if (parsed == null) return false;
+                    timeOfDay = parsed.Value;
+                }
+            }
+            else if (rest.Count > 0) return false;
+
+            if (month is < 1 or > 12 || year is < 2000 or > 2100 || day < 1 || day > DateTime.DaysInMonth(year, month)) return false;
+            var d = new DateTime(year, month, day).Add(timeOfDay);
+            if (!explicitYear && d.Date < DateTime.Today)
+                d = new DateTime(year + 1, month, Math.Min(day, DateTime.DaysInMonth(year + 1, month))).Add(timeOfDay);
+            value = d;
+            return true;
+        }
+
+        public static TimeSpan? TryParseTime(string text)
+        {
+            var groups = Regex.Matches(text ?? "", @"\d+").Select(m => m.Value).ToList();
+            int h, m = 0;
+            if (groups.Count == 1)
+            {
+                var g = groups[0];
+                if (g.Length <= 2) h = int.Parse(g);
+                else if (g.Length is 3 or 4) { h = int.Parse(g[..^2]); m = int.Parse(g[^2..]); }
+                else return null;
+            }
+            else if (groups.Count == 2)
+            {
+                h = int.Parse(groups[0]);
+                m = int.Parse(groups[1]);
+            }
+            else return null;
+            if (h is < 0 or > 23 || m is < 0 or > 59) return null;
+            return new TimeSpan(h, m, 0);
+        }
+
+        public static DateTime DefaultReminderTime()
+        {
+            var now = DateTime.Now;
+            var next = now.Date.AddHours(now.Hour + 1);
+            return next.Hour == 0 || next.Date > now.Date ? now.Date.AddDays(1).AddHours(10) : next;
+        }
+
+        public static string HumanDate(DateTime value)
+        {
+            var today = DateTime.Today;
+            if (value.Date == today) return "сегодня";
+            if (value.Date == today.AddDays(1)) return "завтра";
+            if (value.Date == today.AddDays(-1)) return "вчера";
+            return value.ToString(value.Year == today.Year ? "d MMMM" : "d MMMM yyyy", CultureInfo.GetCultureInfo("ru-RU"));
         }
 
         public static string Human(DateTime value)
@@ -84,6 +173,8 @@ namespace YellowBlackEditor.Models
 
         public string NotePath { get; set; } = "";
 
+        public string ClientPath { get; set; } = "";
+
         [JsonIgnore]
         public string DueText
         {
@@ -134,9 +225,69 @@ namespace YellowBlackEditor.Models
         private bool _deadlineInvalid;
         private string _comment = "";
 
+        private bool _isExpanded = true;
+        private bool _expandInitialized;
+
         public string Name { get => _name; set => Set(ref _name, value); }
-        public string Status { get => _status; set => Set(ref _status, value); }
         public string Comment { get => _comment; set => Set(ref _comment, value); }
+        public ObservableCollection<ProjectTask> Tasks { get; set; } = new();
+
+        public string Status
+        {
+            get => _status;
+            set
+            {
+                if (!Set(ref _status, value)) return;
+                Raise(nameof(IsClosed));
+                if (IsClosed) IsExpanded = false;
+            }
+        }
+
+        [JsonIgnore]
+        public bool IsClosed => _status == "Готово";
+
+        [JsonIgnore]
+        public bool IsExpanded
+        {
+            get
+            {
+                if (!_expandInitialized)
+                {
+                    _expandInitialized = true;
+                    _isExpanded = !IsClosed;
+                }
+                return _isExpanded;
+            }
+            set
+            {
+                _expandInitialized = true;
+                Set(ref _isExpanded, value);
+            }
+        }
+
+        [JsonIgnore]
+        public string Progress
+        {
+            get
+            {
+                var all = AllTasks().ToList();
+                return all.Count == 0 ? "" : $"{all.Count(t => t.Done)} из {all.Count}";
+            }
+        }
+
+        public void RefreshProgress() => Raise(nameof(Progress));
+
+        public IEnumerable<ProjectTask> AllTasks()
+        {
+            foreach (var t in Tasks)
+            {
+                yield return t;
+                foreach (var c in t.AllChildren()) yield return c;
+            }
+        }
+
+        [JsonIgnore]
+        public override IEnumerable<IList> ChildLists => new IList[] { Tasks };
 
         public DateTime? Deadline
         {
@@ -146,6 +297,7 @@ namespace YellowBlackEditor.Models
                 if (!Set(ref _deadline, value)) return;
                 _deadlineText = DateText.Format(value, false);
                 Raise(nameof(DeadlineText));
+                Raise(nameof(DeadlineHuman));
             }
         }
 
@@ -175,5 +327,30 @@ namespace YellowBlackEditor.Models
 
         [JsonIgnore]
         public bool DeadlineInvalid { get => _deadlineInvalid; private set => Set(ref _deadlineInvalid, value); }
+
+        [JsonIgnore]
+        public string DeadlineHuman => _deadline == null ? "Без срока" : "До " + DateText.HumanDate(_deadline.Value);
+    }
+
+    public class ProjectTask : Observable
+    {
+        private string _title = "";
+        private bool _done;
+
+        public string Title { get => _title; set => Set(ref _title, value); }
+        public bool Done { get => _done; set => Set(ref _done, value); }
+        public ObservableCollection<ProjectTask> Children { get; set; } = new();
+
+        public IEnumerable<ProjectTask> AllChildren()
+        {
+            foreach (var c in Children)
+            {
+                yield return c;
+                foreach (var d in c.AllChildren()) yield return d;
+            }
+        }
+
+        [JsonIgnore]
+        public override IEnumerable<IList> ChildLists => new IList[] { Children };
     }
 }

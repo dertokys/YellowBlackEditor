@@ -8,6 +8,8 @@ namespace YellowBlackEditor.Utils
     {
         public bool MinimizeToTray { get; set; } = true;
         public bool TrayHintShown { get; set; }
+        public bool SyncEnabled { get; set; }
+        public string SyncFolder { get; set; } = "";
 
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string RunValue = "YellowBlackNotes";

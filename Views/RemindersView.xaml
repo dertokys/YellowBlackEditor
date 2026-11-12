@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Foreground="{DynamicResource TextBrush}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28,8,28,28" MaxWidth="1040" HorizontalAlignment="Stretch">
+        <StackPanel Margin="22,18,22,22">
+            <TextBlock Text="Напоминания" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,14"/>
 
             <Grid x:Name="AddRow" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
@@ -20,10 +21,13 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Когда напомнить" Style="{DynamicResource FieldLabel}"/>
-                    <TextBox Style="{DynamicResource DateBox}" Text="{Binding DueText, UpdateSourceTrigger=PropertyChanged}" Tag="дд.мм.гггг чч:мм"/>
+                    <Button Style="{DynamicResource FieldButton}" Click="NewPresets_Click" ToolTip="Выбрать день и время">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0" Foreground="{DynamicResource SubTextBrush}"/>
+                            <TextBlock Text="{Binding DueHuman}"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-                <Button Grid.Column="3" Style="{DynamicResource IconButton}" Content="&#xE916;" ToolTip="Выбрать день и время" Margin="6,0,0,2"
-                        VerticalAlignment="Bottom" Click="NewPresets_Click"/>
                 <Button Grid.Column="4" Style="{DynamicResource SecondaryButton}" Height="38" Content="Добавить" Margin="8,0,0,0"
                         VerticalAlignment="Bottom" Click="Add_Click"/>
             </Grid>

@@ -39,11 +39,17 @@ namespace YellowBlackEditor.Utils
                     : throw new InvalidDataException("Карточка клиента повреждена: " + path);
             }
 
-            foreach (var a in card.Accesses)
+            foreach (var a in card.Secrets())
             {
+                if (string.IsNullOrEmpty(a.ProtectedPassword)) continue;
                 var plain = Unprotect(a.ProtectedPassword);
-                a.PasswordUnreadable = plain == null;
-                a.Password = plain ?? "";
+                if (plain == null)
+                {
+                    a.PasswordUnreadable = true;
+                    continue;
+                }
+                if (a.Password.Length == 0) a.Password = plain;
+                a.ProtectedPassword = null;
             }
 
             card.Track();
@@ -52,13 +58,6 @@ namespace YellowBlackEditor.Utils
 
         public static void Save(string folder, ClientCard card)
         {
-            foreach (var a in card.Accesses)
-            {
-                if (a.PasswordUnreadable && a.Password.Length == 0) continue;
-                a.ProtectedPassword = Protect(a.Password);
-                a.PasswordUnreadable = false;
-            }
-
             var path = CardPath(folder);
             var tmp = path + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(card, Options), new UTF8Encoding(false));
@@ -79,13 +78,6 @@ namespace YellowBlackEditor.Utils
             {
                 return "";
             }
-        }
-
-        private static string Protect(string plain)
-        {
-            if (string.IsNullOrEmpty(plain)) return "";
-            var bytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(plain), null, DataProtectionScope.CurrentUser);
-            return Convert.ToBase64String(bytes);
         }
 
         private static string? Unprotect(string encoded)

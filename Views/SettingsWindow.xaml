@@ -102,6 +102,23 @@
                         </StackPanel>
                     </CheckBox>
 
+                    <TextBlock Text="Обмен через общую папку" FontWeight="SemiBold" Margin="0,14,0,8"/>
+                    <CheckBox x:Name="SyncCheck" Style="{DynamicResource SettingCheck}">
+                        <StackPanel>
+                            <TextBlock Text="Обмениваться клиентами через папку"/>
+                            <TextBlock Text="Общие: клиенты из раздела «Клиенты» с заметками, точками, доступами и проектами. Напоминания и другие разделы остаются личными. Обмен раз в минуту и при открытии клиента."
+                                       Foreground="{DynamicResource SubTextBrush}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="560"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Grid Margin="30,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="SyncFolderBox" Style="{DynamicResource FieldBox}" Tag="X:\Отделы ИТФ\Отдел программирования\ОбменЗ"/>
+                        <Button Grid.Column="1" Style="{DynamicResource SecondaryButton}" Height="38" Margin="8,0,0,0" Content="Выбрать" Click="PickSyncFolder_Click"/>
+                    </Grid>
+
                     <TextBlock Text="Горячие клавиши" FontWeight="SemiBold" Margin="0,12,0,6"/>
                     <Grid>
                         <Grid.RowDefinitions>
