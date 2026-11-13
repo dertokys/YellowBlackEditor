@@ -232,15 +232,6 @@ namespace YellowBlackEditor
 
         private string RelativePath(NodeViewModel node) => Path.GetRelativePath(_workspacePath, node.FullPath);
 
-        private Reminder? OpenReminderFor(NodeViewModel note)
-        {
-            var rel = RelativePath(note);
-            return _generalReminders
-                .Where(r => !r.Done && string.Equals(r.NotePath, rel, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(r => r.Due ?? DateTime.MaxValue)
-                .FirstOrDefault();
-        }
-
         private void UpdateNoteReminderButton()
         {
             if (_currentDocNode == null)
@@ -249,47 +240,27 @@ namespace YellowBlackEditor
                 return;
             }
             NoteReminderBtn.Visibility = Visibility.Visible;
-            var r = OpenReminderFor(_currentDocNode);
+            var all = NoteReminders(_currentDocNode);
+            var r = all.FirstOrDefault(x => x.Due != null);
+            NoteReminderBtn.ToolTip = all.Count switch
+            {
+                0 => "Напомнить об этой заметке",
+                1 => "Нажмите, чтобы изменить или добавить ещё одно напоминание",
+                _ => $"Напоминаний по заметке: {all.Count}. Нажмите, чтобы посмотреть все или добавить"
+            };
             if (r?.Due == null)
             {
-                NoteReminderText.Text = "Напомнить";
+                NoteReminderText.Text = all.Count > 0 ? $"Напоминаний: {all.Count}" : "Напомнить";
                 NoteReminderIcon.ClearValue(ForegroundProperty);
                 NoteReminderText.ClearValue(ForegroundProperty);
                 return;
             }
             var overdue = r.Due <= DateTime.Now;
-            NoteReminderText.Text = (overdue ? "Просрочено: " : "Напомню ") + DateText.Human(r.Due.Value);
+            NoteReminderText.Text = (overdue ? "Просрочено: " : "Напомню ") + DateText.Human(r.Due.Value) + (all.Count > 1 ? $" и ещё {all.Count - 1}" : "");
             var brush = (System.Windows.Media.Brush)FindResource(overdue ? "DangerBrush" : "AccentTextBrush");
             NoteReminderIcon.Foreground = brush;
             if (overdue) NoteReminderText.Foreground = brush;
             else NoteReminderText.ClearValue(ForegroundProperty);
-        }
-
-        private void NoteReminder_Click(object sender, RoutedEventArgs e)
-        {
-            var note = _currentDocNode;
-            if (note == null) return;
-            var existing = OpenReminderFor(note);
-            ReminderPicker.Open(NoteReminderBtn, existing?.Due, existing?.Text ?? note.Name, true, existing != null,
-                (due, text) =>
-                {
-                    var r = existing ?? new Reminder { NotePath = RelativePath(note) };
-                    r.Text = string.IsNullOrWhiteSpace(text) ? note.Name : text;
-                    r.Due = due;
-                    r.Notified = false;
-                    if (existing == null) _generalReminders.Add(r);
-                    SaveGeneralReminders();
-                    RefreshReminders();
-                    Status("Напомню " + DateText.Human(due));
-                },
-                () =>
-                {
-                    if (existing == null) return;
-                    _generalReminders.Remove(existing);
-                    SaveGeneralReminders();
-                    RefreshReminders();
-                    Status("Напоминание убрано");
-                });
         }
 
         private static string MovedPath(string path, string oldRel, string newRel)
