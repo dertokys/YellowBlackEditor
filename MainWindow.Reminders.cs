@@ -47,7 +47,7 @@ namespace YellowBlackEditor
                 RefreshReminders();
             };
 
-            PreviewMouseDown += (_, _) => { if (RemindersPopup.IsOpen && !BellBtn.IsMouseOver) RemindersPopup.IsOpen = false; };
+            PreviewMouseDown += (_, _) => { if (RemindersPopup.IsOpen && !BellBtn.IsMouseOver && !RemindersPanel.IsMouseOver) RemindersPopup.IsOpen = false; };
             Deactivated += (_, _) => RemindersPopup.IsOpen = false;
             LocationChanged += (_, _) => RemindersPopup.IsOpen = false;
 
@@ -212,6 +212,7 @@ namespace YellowBlackEditor
             UpdateTreeBells(entries);
             UpdateNoteReminderButton();
             if (RemindersPopup.IsOpen) RemindersPanel.Show(entries);
+            RefreshTodayIfShown();
         }
 
         private void UpdateTreeBells(List<ReminderEntry> entries)
