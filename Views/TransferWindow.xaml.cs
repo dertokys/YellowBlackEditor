@@ -29,10 +29,11 @@ namespace YellowBlackEditor.Views
         private readonly Context _ctx;
         private string _kind = Transfer.KindText;
         private string? _file;
+        private DateTime? _due;
 
         public bool Changed { get; private set; }
 
-        public TransferWindow(Context ctx, bool openInbox)
+        public TransferWindow(Context ctx, bool openInbox, string? kind = null)
         {
             InitializeComponent();
             SourceInitialized += (_, _) => DarkTitleBar.Apply(this);
@@ -54,6 +55,7 @@ namespace YellowBlackEditor.Views
             NobodyText.Visibility = people.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
             SetKind(ctx.SelectedText.Length > 0 ? Transfer.KindText : ctx.NoteFolder != null ? Transfer.KindNote : ctx.ClientFolder != null ? Transfer.KindClient : Transfer.KindText);
+            if (kind != null) SetKind(kind);
             RefreshInbox();
             RefreshSent();
             ShowTab(openInbox ? 1 : 0);
@@ -85,6 +87,8 @@ namespace YellowBlackEditor.Views
             KindClient.IsChecked = kind == Transfer.KindClient;
             KindText.IsChecked = kind == Transfer.KindText;
             KindFile.IsChecked = kind == Transfer.KindFile;
+            KindReminder.IsChecked = kind == Transfer.KindReminder;
+            ReminderPanel.Visibility = kind == Transfer.KindReminder ? Visibility.Visible : Visibility.Collapsed;
             TextPanel.Visibility = kind == Transfer.KindText ? Visibility.Visible : Visibility.Collapsed;
             FilePanel.Visibility = kind == Transfer.KindFile ? Visibility.Visible : Visibility.Collapsed;
             KindHint.Text = kind switch
@@ -92,6 +96,8 @@ namespace YellowBlackEditor.Views
                 Transfer.KindNote => "Коллега получит копию заметки вместе с картинками. Ваша заметка останется у вас без изменений.",
                 Transfer.KindClient => "Коллега получит копию карточки: реквизиты, контакты, точки, доступы, ПО и договоры. Заметки, проекты и время не передаются.",
                 Transfer.KindFile => "Любой файл до 200 МБ. Коллега сохранит его, куда захочет.",
+                Transfer.KindReminder => "Напоминание появится у коллеги в списке и в срок придёт уведомлением Windows. Отвечать ему ничего не нужно." +
+                                         (_ctx.ClientName != null || _ctx.NoteClient.Length > 0 ? $" Привяжется к клиенту «{_ctx.ClientName ?? _ctx.NoteClient}»." : ""),
                 _ => "Коллега получит текст и сможет сохранить его заметкой или скопировать."
             };
             SendStatus.Text = "";
@@ -100,6 +106,16 @@ namespace YellowBlackEditor.Views
         private void Kind_Click(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement { Tag: string k }) SetKind(k);
+        }
+
+        private void Due_Click(object sender, RoutedEventArgs e)
+        {
+            ReminderPicker.Open(DueBtn, _due ?? DateText.DefaultReminderTime(), null, false, false, (d, _) =>
+            {
+                _due = d;
+                DueText.Text = DateText.Human(d);
+                SendStatus.Text = "";
+            });
         }
 
         private void PickFile_Click(object sender, RoutedEventArgs e)
@@ -164,6 +180,23 @@ namespace YellowBlackEditor.Views
                         }
                     };
                     break;
+                case Transfer.KindReminder:
+                    if (ReminderTextBox.Text.Trim().Length == 0)
+                    {
+                        SendStatus.Text = "Напишите, что напомнить";
+                        return;
+                    }
+                    if (_due == null)
+                    {
+                        SendStatus.Text = "Выберите, когда напомнить";
+                        return;
+                    }
+                    t.Title = ReminderTextBox.Text.Trim();
+                    t.Text = t.Title;
+                    t.Due = _due;
+                    t.ClientName = _ctx.ClientName ?? _ctx.NoteClient;
+                    fill = _ => { };
+                    break;
                 case Transfer.KindFile:
                     if (_file == null)
                     {
@@ -210,7 +243,7 @@ namespace YellowBlackEditor.Views
         private void RefreshInbox()
         {
             List<Transfer> inbox;
-            try { inbox = Transfers.LoadInbox(_ctx.Exchange, AppSettings.UserId).Where(t => t.IsNew).ToList(); }
+            try { inbox = Transfers.LoadInbox(_ctx.Exchange, AppSettings.UserId).Where(t => t.IsNew && t.Kind != Transfer.KindReminder).ToList(); }
             catch { inbox = new(); }
             InboxList.ItemsSource = inbox.Select(t => new InboxItem(t, t.Glyph, string.IsNullOrWhiteSpace(t.Title) ? t.KindTitle : t.Title,
                 $"{t.KindTitle} от {t.FromName}, {DateText.Human(t.CreatedAt.ToLocalTime())}" + (t.ClientName.Length > 0 && t.Kind == Transfer.KindNote ? $" · клиент {t.ClientName}" : ""),

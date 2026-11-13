@@ -133,9 +133,10 @@ namespace YellowBlackEditor
             _shared = remote;
             var byId = remote.ToDictionary(p => p.Id);
             var me = AppSettings.UserId;
-            var pushes = new List<SharedProject>();
             var touched = new List<LocalShared>();
             var timeCache = new Dictionary<string, List<TimeEntry>>(StringComparer.OrdinalIgnoreCase);
+            var merges = 0;
+            var mergeConflicts = 0;
 
             foreach (var local in LocalSharedCopies().ToList())
             {
@@ -160,7 +161,22 @@ namespace YellowBlackEditor
                     meMember.Minutes = myMinutes;
                     push = true;
                 }
-                if (localChanged)
+                var seenAt = sp.UpdatedAt;
+                if (localChanged && remoteChanged && JsonMerge.Parse(p.SharedBase) is { } baseNode)
+                {
+                    var merged = JsonMerge.Merge(baseNode, SharedProjects.Content(p), SharedProjects.Content(sp), true);
+                    if (merged.Merged != null)
+                    {
+                        SharedProjects.ApplyContent(merged.Merged, p);
+                        SharedProjects.ApplyContent(merged.Merged, sp);
+                        if (merged.Conflicts.Count > 0) mergeConflicts++;
+                        merges++;
+                    }
+                    SharedProjects.Touch(sp);
+                    sp.UpdatedByName = _appSettings.DisplayName;
+                    push = true;
+                }
+                else if (localChanged)
                 {
                     SharedProjects.CopyContent(p, sp);
                     SharedProjects.Touch(sp);
@@ -170,29 +186,43 @@ namespace YellowBlackEditor
                 else if (remoteChanged)
                 {
                     SharedProjects.CopyContent(sp, p);
+                    touched.Add(local);
                 }
-                if (push) pushes.Add(sp);
+
+                if (push)
+                {
+                    var current = SharedProjects.LoadOne(exchange, sp.Id);
+                    if (current != null && current.UpdatedAt != seenAt)
+                    {
+                        touched.Add(local);
+                        continue;
+                    }
+                    try
+                    {
+                        SharedProjects.Save(exchange, sp);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("Не удалось обновить общий проект " + sp.Id, ex);
+                        touched.Add(local);
+                        continue;
+                    }
+                }
 
                 var hash = SharedProjects.Hash(sp);
-                if (p.SharedHash != hash || p.SharedSyncedAt != sp.UpdatedAt || remoteChanged || localChanged)
+                if (p.SharedHash != hash || p.SharedSyncedAt != sp.UpdatedAt || remoteChanged || localChanged || p.SharedBase == null)
                     touched.Add(local);
                 p.SharedHash = hash;
                 p.SharedSyncedAt = sp.UpdatedAt;
+                p.SharedBase = SharedProjects.Content(sp).ToJsonString();
                 SharedProjects.ApplyInfo(sp, p);
             }
 
-            SaveLocalCopies(touched);
-            if (pushes.Count > 0)
-            {
-                Task.Run(() =>
-                {
-                    foreach (var sp in pushes)
-                    {
-                        try { SharedProjects.Save(exchange, sp); }
-                        catch (Exception ex) { LogError("Не удалось обновить общий проект " + sp.Id, ex); }
-                    }
-                });
-            }
+            SaveLocalCopies(touched.Distinct());
+            if (merges > 0)
+                Status(mergeConflicts > 0
+                    ? "Общий проект меняли двое: правки объединены, в одном месте оставлено ваше значение"
+                    : "Общий проект меняли двое: правки объединены");
 
             RefreshProjectsGroup();
             RefreshSharedGroup();
@@ -335,6 +365,7 @@ namespace YellowBlackEditor
             }
             p.SharedHash = SharedProjects.Hash(sp);
             p.SharedSyncedAt = sp.UpdatedAt;
+            p.SharedBase = SharedProjects.Content(sp).ToJsonString();
             SharedProjects.ApplyInfo(sp, p);
             p.LastSharedId = sp.Id;
             p.SharedId = sp.Id;
@@ -410,6 +441,7 @@ namespace YellowBlackEditor
             SharedProjects.CopyContent(sp, p);
             p.SharedHash = SharedProjects.Hash(sp);
             p.SharedSyncedAt = sp.UpdatedAt;
+            p.SharedBase = SharedProjects.Content(sp).ToJsonString();
             SharedProjects.ApplyInfo(sp, p);
             p.LastSharedId = sp.Id;
             p.SharedId = sp.Id;
@@ -464,6 +496,7 @@ namespace YellowBlackEditor
             SharedProjects.CopyContent(sp, p);
             p.SharedHash = SharedProjects.Hash(sp);
             p.SharedSyncedAt = sp.UpdatedAt;
+            p.SharedBase = SharedProjects.Content(sp).ToJsonString();
             SharedProjects.ApplyInfo(sp, p);
             p.LastSharedId = sp.Id;
             p.SharedId = sp.Id;

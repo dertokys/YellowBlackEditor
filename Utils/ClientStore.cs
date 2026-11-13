@@ -50,7 +50,7 @@ namespace YellowBlackEditor.Utils
                 try
                 {
                     if (File.Exists(p))
-                        return JsonSerializer.Deserialize<List<ClientSoftware>>(File.ReadAllText(p), Options) ?? new();
+                        return JsonSerializer.Deserialize<List<ClientSoftware>>(JsonMerge.WithIds(File.ReadAllText(p)), Options) ?? new();
                 }
                 catch { }
             }
@@ -72,14 +72,14 @@ namespace YellowBlackEditor.Utils
             ClientCard card;
             try
             {
-                raw = File.Exists(path) ? File.ReadAllText(path) : "{}";
+                raw = File.Exists(path) ? JsonMerge.WithIds(File.ReadAllText(path)) : "{}";
                 card = JsonSerializer.Deserialize<ClientCard>(raw, Options) ?? new ClientCard();
             }
             catch
             {
                 var bak = path + ".bak";
                 if (!File.Exists(bak)) throw new InvalidDataException("Карточка клиента повреждена: " + path);
-                raw = File.ReadAllText(bak);
+                raw = JsonMerge.WithIds(File.ReadAllText(bak));
                 card = JsonSerializer.Deserialize<ClientCard>(raw, Options) ?? new ClientCard();
             }
 

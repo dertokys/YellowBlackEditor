@@ -4,7 +4,16 @@
              Foreground="{DynamicResource TextBrush}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="22,18,22,22">
-            <TextBlock Text="Напоминания" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,14"/>
+            <Grid Margin="0,0,0,14">
+                <TextBlock Text="Напоминания" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Style="{DynamicResource TextButton}" HorizontalAlignment="Right" Click="Colleague_Click"
+                        ToolTip="Поставить напоминание коллеге: оно придёт ему уведомлением в нужное время">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                        <TextBlock Text="Напомнить коллеге"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
 
             <Grid x:Name="AddRow" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>

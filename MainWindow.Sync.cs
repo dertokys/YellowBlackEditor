@@ -111,7 +111,15 @@ namespace YellowBlackEditor
 
             Task.Run(() =>
             {
+                var required = Updates.RequiredFormat(exchange);
+                if (required.Format > Updates.DataFormat)
+                    throw new InvalidOperationException($"В папке обмена данные версии {required.Version}. Обновите программу, пока обмен выключен");
+                Updates.Installer? update = null;
+                try { update = Updates.Target(exchange); }
+                catch (Exception ex) { LogError("Обновления", ex); }
                 var result = sync.Run();
+                try { Updates.MarkFormat(exchange); }
+                catch (Exception ex) { LogError("Формат данных", ex); }
                 List<SharedProject>? shared = null;
                 List<SharedPerson>? people = null;
                 List<Transfer>? inbox = null;
@@ -125,7 +133,7 @@ namespace YellowBlackEditor
                 catch (Exception ex) { LogError("Общие проекты", ex); }
                 try { inbox = Transfers.LoadInbox(exchange, AppSettings.UserId); }
                 catch (Exception ex) { LogError("Входящие передачи", ex); }
-                return (result, shared, people, inbox);
+                return (result, shared, people, inbox, update);
             }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
                 _syncRunning = false;
@@ -135,6 +143,12 @@ namespace YellowBlackEditor
                 {
                     var ex = t.Exception.GetBaseException();
                     var unavailable = ex is DirectoryNotFoundException or IOException;
+                    if (ex is InvalidOperationException && ex.Message.StartsWith("В папке обмена данные версии"))
+                    {
+                        SyncText.Text = "Обмен: нужна новая версия";
+                        Status(ex.Message);
+                        return;
+                    }
                     SyncText.Text = unavailable ? "Обмен: папка недоступна" : "Обмен: ошибка";
                     SyncBtn.ToolTip = ex.Message;
                     LogError("Обмен через папку", ex);
@@ -142,13 +156,16 @@ namespace YellowBlackEditor
                         Status(unavailable ? $"Папка обмена недоступна: {_appSettings.SyncFolder}" : "Обмен не удался: " + ex.Message);
                     return;
                 }
-                var (r, shared, people, inbox) = t.Result;
+                var (r, shared, people, inbox, update) = t.Result;
+                ApplyUpdateInfo(update);
                 if (people != null) _people = people;
                 if (inbox != null && exchange == _appSettings.SyncFolder) UpdateInbox(inbox, notify: true);
                 SyncText.Text = "Обмен: " + DateTime.Now.ToString("HH:mm");
                 SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
                 if (r.Conflicts > 0)
-                    Status($"Обмен: карточку клиента меняли двое, оставлена более свежая версия. Вторая сохранена в {Path.Combine(_appConfigDir, "conflicts")}");
+                    Status($"Обмен: одно и то же поле меняли двое ({string.Join("; ", r.ConflictFields.Take(2))}), оставлено более свежее значение. Второе сохранено в {Path.Combine(_appConfigDir, "conflicts")}");
+                else if (r.Merged > 0)
+                    Status($"Обмен: карточки меняли двое, правки объединены ({r.Merged})");
                 else if (manual)
                     Status(r.Uploaded == 0 && r.Downloaded == 0
                         ? "Обмен завершён: всё уже совпадает"

@@ -34,6 +34,7 @@ namespace YellowBlackEditor.Models
 
     public class ClientContact : Observable
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         private string _name = "";
         private string _phone = "";
         private string _role = "";
@@ -45,6 +46,7 @@ namespace YellowBlackEditor.Models
 
     public class Credential : Observable, ISecret
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         private string _title = "";
         private string _url = "";
         private string _login = "";
@@ -89,6 +91,7 @@ namespace YellowBlackEditor.Models
 
     public class RemoteAccess : Observable, ISecret
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public static readonly string[] Programs = { "RuDesktop", "AnyDesk", "Ассистент", "Helper", "Другое" };
 
         private string _point = "";

@@ -26,6 +26,9 @@ namespace YellowBlackEditor.Views
         public event Action<NodeViewModel>? OpenNoteRequested;
         public event Action<Reminder>? AddRequested;
         public event Action<string>? StatusMessage;
+        public event Action? ColleagueRequested;
+
+        private void Colleague_Click(object sender, System.Windows.RoutedEventArgs e) => ColleagueRequested?.Invoke();
 
         private Reminder _draft = NewDraft();
 

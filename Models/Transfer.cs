@@ -8,6 +8,7 @@ namespace YellowBlackEditor.Models
         public const string KindClient = "client";
         public const string KindText = "text";
         public const string KindFile = "file";
+        public const string KindReminder = "reminder";
 
         public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public string FromId { get; set; } = "";
@@ -22,6 +23,7 @@ namespace YellowBlackEditor.Models
         public string FileName { get; set; } = "";
         public string ClientName { get; set; } = "";
         public string State { get; set; } = "new";
+        public DateTime? Due { get; set; }
         public DateTime? StateAt { get; set; }
 
         [JsonIgnore]
@@ -36,6 +38,7 @@ namespace YellowBlackEditor.Models
             KindNote => "Заметка",
             KindClient => "Клиент",
             KindFile => "Файл",
+            KindReminder => "Напоминание",
             _ => "Текст"
         };
 
@@ -45,6 +48,7 @@ namespace YellowBlackEditor.Models
             KindNote => "",
             KindClient => "",
             KindFile => "",
+            KindReminder => "",
             _ => ""
         };
 

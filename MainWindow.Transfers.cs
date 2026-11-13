@@ -18,7 +18,7 @@ namespace YellowBlackEditor
 
         private void TransferButton_Click(object sender, RoutedEventArgs e) => OpenTransfer(null, _inbox.Count > 0);
 
-        private void OpenTransfer(NodeViewModel? node, bool inbox)
+        private void OpenTransfer(NodeViewModel? node, bool inbox, string? kind = null)
         {
             if (!SharingAvailable(out var exchange)) return;
             SaveAll(quiet: true);
@@ -52,7 +52,7 @@ namespace YellowBlackEditor
                 Accept = AcceptTransfer
             };
             _transferSelect = null;
-            var w = new TransferWindow(ctx, inbox) { Owner = this };
+            var w = new TransferWindow(ctx, inbox, kind) { Owner = this };
             w.ShowDialog();
             if (w.Changed)
             {
@@ -150,7 +150,8 @@ namespace YellowBlackEditor
 
         private void UpdateInbox(List<Transfer> inbox, bool notify)
         {
-            _inbox = inbox.Where(t => t.IsNew).ToList();
+            AcceptReminders(inbox.Where(t => t.IsNew && t.Kind == Transfer.KindReminder).ToList());
+            _inbox = inbox.Where(t => t.IsNew && t.Kind != Transfer.KindReminder).ToList();
             TransferBadge.Visibility = _inbox.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             TransferCount.Text = _inbox.Count.ToString();
             TransferBtn.ToolTip = _inbox.Count > 0
@@ -180,6 +181,41 @@ namespace YellowBlackEditor
             {
                 LogError("Не удалось показать уведомление", ex);
             }
+        }
+
+        private void AcceptReminders(List<Transfer> list)
+        {
+            if (list.Count == 0) return;
+            foreach (var t in list)
+            {
+                var client = t.ClientName.Length == 0
+                    ? null
+                    : Flatten(RootNodes.Where(n => !n.IsVirtual)).FirstOrDefault(n =>
+                        n.Type == NodeType.Client && n.Name.Equals(t.ClientName, StringComparison.CurrentCultureIgnoreCase));
+                _generalReminders.Add(new Reminder
+                {
+                    Text = $"{t.Text} (от {t.FromName})",
+                    Due = t.Due,
+                    ClientPath = client == null ? "" : RelativePath(client)
+                });
+                try { Transfers.SetState(t, "accepted"); }
+                catch (Exception ex) { LogError("Не удалось отметить напоминание принятым", ex); }
+            }
+            SaveGeneralReminders();
+            RefreshReminders();
+
+            var first = list[0];
+            var text = list.Count == 1
+                ? $"Напоминание от коллеги {first.FromName}: «{first.Text}»" + (first.Due is { } d ? ", " + DateText.Human(d) : "")
+                : $"Коллеги поставили вам напоминаний: {list.Count}";
+            Status(text);
+            try
+            {
+                _lastBalloonIsReminder = true;
+                _balloonTransfer = false;
+                _tray?.ShowBalloonTip(8000, "Новое напоминание от коллеги", text, WF.ToolTipIcon.Info);
+            }
+            catch { }
         }
 
         private void OpenBalloonTransfer()

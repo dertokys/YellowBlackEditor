@@ -38,6 +38,7 @@
                     <ToggleButton x:Name="KindClient" Style="{DynamicResource AccentToggle}" Height="34" Margin="0,0,8,8" MinWidth="120" Click="Kind_Click" Tag="client"/>
                     <ToggleButton x:Name="KindText" Style="{DynamicResource AccentToggle}" Height="34" Margin="0,0,8,8" MinWidth="100" Content="Текст" Click="Kind_Click" Tag="text"/>
                     <ToggleButton x:Name="KindFile" Style="{DynamicResource AccentToggle}" Height="34" Margin="0,0,8,8" MinWidth="100" Content="Файл" Click="Kind_Click" Tag="file"/>
+                    <ToggleButton x:Name="KindReminder" Style="{DynamicResource AccentToggle}" Height="34" Margin="0,0,8,8" MinWidth="130" Content="Напоминание" Click="Kind_Click" Tag="reminder"/>
                 </WrapPanel>
 
                 <TextBlock x:Name="KindHint" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" Margin="0,0,0,14"/>
@@ -47,6 +48,27 @@
                     <TextBox x:Name="TextBox" Style="{DynamicResource FieldBox}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="110" MaxHeight="220"
                              VerticalContentAlignment="Top" Padding="10,9" VerticalScrollBarVisibility="Auto" Tag="Пароль от кабинета, адрес, инструкция…"/>
                 </StackPanel>
+
+                <Grid x:Name="ReminderPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="220"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Что напомнить" Style="{DynamicResource FieldLabel}"/>
+                        <TextBox x:Name="ReminderTextBox" Style="{DynamicResource FieldBox}" Tag="Перезвонить Аквадару по кассе"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Когда" Style="{DynamicResource FieldLabel}"/>
+                        <Button x:Name="DueBtn" Style="{DynamicResource FieldButton}" Click="Due_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0" Foreground="{DynamicResource SubTextBrush}"/>
+                                <TextBlock x:Name="DueText" Text="Выбрать время"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
                 <StackPanel x:Name="FilePanel" Visibility="Collapsed" Orientation="Horizontal" Margin="0,0,0,14">
                     <Button Style="{DynamicResource SecondaryButton}" Height="36" Content="Выбрать файл…" Click="PickFile_Click"/>

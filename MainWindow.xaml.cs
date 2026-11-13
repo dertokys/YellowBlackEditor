@@ -105,6 +105,7 @@ namespace YellowBlackEditor
             ClientView.OpenNoteRequested += n => SelectNode(n);
             InitShared();
             InitToday();
+            InitUpdates();
 
             _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); SaveAll(); };

@@ -11,6 +11,8 @@ namespace YellowBlackEditor.Utils
         public int Uploaded { get; set; }
         public int Downloaded { get; set; }
         public int Conflicts { get; set; }
+        public int Merged { get; set; }
+        public List<string> ConflictFields { get; } = new();
     }
 
     public sealed class FolderSync
@@ -18,6 +20,7 @@ namespace YellowBlackEditor.Utils
         public const string TrashFolderName = "_Удалённые";
         private const string ClientFile = "client.json";
         private const string ContractsFile = "contracts.json";
+        private const string SoftwareFile = "software.json";
 
         private static bool IsClientFile(string rel) => Path.GetFileName(rel).Equals(ClientFile, StringComparison.OrdinalIgnoreCase);
 
@@ -36,6 +39,7 @@ namespace YellowBlackEditor.Utils
         private readonly string _exchangeRoot;
         private readonly string _statePath;
         private readonly string _conflictsRoot;
+        private readonly string _baseRoot;
 
         public FolderSync(string localRoot, string exchangeFolder, string configDir)
         {
@@ -46,6 +50,61 @@ namespace YellowBlackEditor.Utils
                 System.Text.Encoding.UTF8.GetBytes((_localRoot + "|" + _exchangeRoot).ToLowerInvariant())))[..12];
             _statePath = Path.Combine(configDir, $"sync-{key}.json");
             _conflictsRoot = Path.Combine(configDir, "conflicts");
+            _baseRoot = Path.Combine(configDir, $"sync-base-{key}");
+        }
+
+        private string BasePath(string rel) => Path.Combine(_baseRoot, rel);
+
+        private void SaveBase(string rel, string fromPath)
+        {
+            try
+            {
+                if (!File.Exists(fromPath)) return;
+                var to = BasePath(rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                File.Copy(fromPath, to, true);
+            }
+            catch { }
+        }
+
+        private void DeleteBase(string rel)
+        {
+            try { File.Delete(BasePath(rel)); } catch { }
+        }
+
+        private static bool StillSame(string path, FileInfo seen)
+        {
+            try
+            {
+                var now = new FileInfo(path);
+                return now.Exists && now.Length == seen.Length && Same(now.LastWriteTimeUtc.Ticks, seen.LastWriteTimeUtc.Ticks);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static readonly JsonSerializerOptions MergeOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        private (string Text, List<string> Conflicts)? TryMerge(string rel, string lPath, string rPath, bool preferLocal)
+        {
+            var basePath = BasePath(rel);
+            if (!File.Exists(basePath)) return null;
+            var b = JsonMerge.Parse(File.ReadAllText(basePath));
+            var l = JsonMerge.Parse(File.ReadAllText(lPath));
+            var r = JsonMerge.Parse(File.ReadAllText(rPath));
+            if (b == null || l == null || r == null) return null;
+            JsonMerge.EnsureIds(b);
+            JsonMerge.EnsureIds(l);
+            JsonMerge.EnsureIds(r);
+            var res = JsonMerge.Merge(b, l, r, preferLocal);
+            if (res.Merged == null) return null;
+            return (res.Merged.ToJsonString(MergeOptions), res.Conflicts);
         }
 
         public string RemoteRoot => _remoteRoot;
@@ -76,8 +135,35 @@ namespace YellowBlackEditor.Utils
                 {
                     var lChanged = s == null || !Same(l.LastWriteTimeUtc.Ticks, s.L);
                     var rChanged = s == null || !Same(r.LastWriteTimeUtc.Ticks, s.R);
-                    if (lChanged && rChanged && !SameContent(l, r))
+                    if (lChanged && rChanged && !SameContent(l, r) && TryMerge(rel, lPath, rPath, l.LastWriteTimeUtc >= r.LastWriteTimeUtc) is { } merged)
                     {
+                        if (!StillSame(rPath, r))
+                        {
+                            if (s != null) newState[rel] = s;
+                            continue;
+                        }
+                        if (merged.Conflicts.Count > 0)
+                        {
+                            result.Conflicts++;
+                            result.ConflictFields.AddRange(merged.Conflicts.Select(c => Path.GetDirectoryName(rel) + ": " + c));
+                            if (l.LastWriteTimeUtc >= r.LastWriteTimeUtc) BackupConflict(rPath, rel, "из папки обмена");
+                            else BackupConflict(lPath, rel, "локальная");
+                        }
+                        var tmp = lPath + ".mergetmp";
+                        File.WriteAllText(tmp, merged.Text, new System.Text.UTF8Encoding(false));
+                        if (File.Exists(lPath)) File.Copy(lPath, lPath + ".bak", true);
+                        File.Move(tmp, lPath, true);
+                        Copy(lPath, rPath, _remoteRoot);
+                        result.Merged++;
+                        result.LocalChanged.Add(rel);
+                    }
+                    else if (lChanged && rChanged && !SameContent(l, r))
+                    {
+                        if (!StillSame(rPath, r))
+                        {
+                            if (s != null) newState[rel] = s;
+                            continue;
+                        }
                         result.Conflicts++;
                         if (l.LastWriteTimeUtc >= r.LastWriteTimeUtc)
                         {
@@ -95,6 +181,11 @@ namespace YellowBlackEditor.Utils
                     }
                     else if (lChanged && !rChanged)
                     {
+                        if (!StillSame(rPath, r))
+                        {
+                            if (s != null) newState[rel] = s;
+                            continue;
+                        }
                         Copy(lPath, rPath, _remoteRoot);
                         result.Uploaded++;
                     }
@@ -105,6 +196,7 @@ namespace YellowBlackEditor.Utils
                         result.LocalChanged.Add(rel);
                     }
                     newState[rel] = new Entry { L = new FileInfo(lPath).LastWriteTimeUtc.Ticks, R = new FileInfo(rPath).LastWriteTimeUtc.Ticks };
+                    if (lChanged || rChanged || !File.Exists(BasePath(rel))) SaveBase(rel, lPath);
                 }
                 else if (l != null)
                 {
@@ -117,11 +209,13 @@ namespace YellowBlackEditor.Utils
                             FileSystem.DeleteDirectory(clientDir, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                         result.LocalChanged.Add(rel);
                         result.StructureChanged = true;
+                        DeleteBase(rel);
                         continue;
                     }
                     Copy(lPath, rPath, _remoteRoot);
                     result.Uploaded++;
                     newState[rel] = new Entry { L = l.LastWriteTimeUtc.Ticks, R = new FileInfo(rPath).LastWriteTimeUtc.Ticks };
+                    SaveBase(rel, lPath);
                 }
                 else if (r != null)
                 {
@@ -129,6 +223,7 @@ namespace YellowBlackEditor.Utils
                     {
                         MoveToRemoteTrash(rPath, rel);
                         RemoveEmptyParents(Path.GetDirectoryName(rPath)!, _remoteRoot);
+                        DeleteBase(rel);
                         continue;
                     }
                     Copy(rPath, lPath, _localRoot);
@@ -136,6 +231,7 @@ namespace YellowBlackEditor.Utils
                     result.LocalChanged.Add(rel);
                     result.StructureChanged = true;
                     newState[rel] = new Entry { L = new FileInfo(lPath).LastWriteTimeUtc.Ticks, R = r.LastWriteTimeUtc.Ticks };
+                    SaveBase(rel, lPath);
                 }
             }
 
@@ -149,7 +245,8 @@ namespace YellowBlackEditor.Utils
         {
             var parts = rel.Split(Path.DirectorySeparatorChar);
             return parts.Length == 2 &&
-                   (parts[1].Equals(ClientFile, StringComparison.OrdinalIgnoreCase) || parts[1].Equals(ContractsFile, StringComparison.OrdinalIgnoreCase)) &&
+                   (parts[1].Equals(ClientFile, StringComparison.OrdinalIgnoreCase) || parts[1].Equals(ContractsFile, StringComparison.OrdinalIgnoreCase) ||
+                    parts[1].Equals(SoftwareFile, StringComparison.OrdinalIgnoreCase)) &&
                    !parts[0].Equals(TrashFolderName, StringComparison.OrdinalIgnoreCase);
         }
 

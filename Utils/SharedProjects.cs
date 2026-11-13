@@ -170,6 +170,64 @@ namespace YellowBlackEditor.Utils
             foreach (var t in from.Tasks) to.Tasks.Add(CopyTask(t));
         }
 
+        private sealed class ProjectContent
+        {
+            public string Name { get; set; } = "";
+            public string Status { get; set; } = "";
+            public DateTime? Deadline { get; set; }
+            public string Comment { get; set; } = "";
+            public System.Collections.ObjectModel.ObservableCollection<ProjectTask> Tasks { get; set; } = new();
+        }
+
+        private static System.Text.Json.Nodes.JsonNode Content(string name, string status, DateTime? deadline, string comment, IEnumerable<ProjectTask> tasks) =>
+            System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(new ProjectContent
+            {
+                Name = name,
+                Status = status,
+                Deadline = deadline,
+                Comment = comment,
+                Tasks = new System.Collections.ObjectModel.ObservableCollection<ProjectTask>(tasks)
+            }, Options))!;
+
+        public static System.Text.Json.Nodes.JsonNode Content(ClientProject p) => Content(p.Name, p.Status, p.Deadline, p.Comment, p.Tasks);
+        public static System.Text.Json.Nodes.JsonNode Content(SharedProject p) => Content(p.Name, p.Status, p.Deadline, p.Comment, p.Tasks);
+
+        public static void ApplyContent(System.Text.Json.Nodes.JsonNode node, ClientProject to)
+        {
+            var c = node.Deserialize<ProjectContent>(Options);
+            if (c == null) return;
+            to.Name = c.Name;
+            to.Status = c.Status;
+            to.Deadline = c.Deadline;
+            to.Comment = c.Comment;
+            to.Tasks.Clear();
+            foreach (var t in c.Tasks) to.Tasks.Add(t);
+        }
+
+        public static void ApplyContent(System.Text.Json.Nodes.JsonNode node, SharedProject to)
+        {
+            var c = node.Deserialize<ProjectContent>(Options);
+            if (c == null) return;
+            to.Name = c.Name;
+            to.Status = c.Status;
+            to.Deadline = c.Deadline;
+            to.Comment = c.Comment;
+            to.Tasks = c.Tasks;
+        }
+
+        public static SharedProject? LoadOne(string exchange, string id)
+        {
+            var path = FilePath(exchange, id);
+            try
+            {
+                return File.Exists(path) ? JsonSerializer.Deserialize<SharedProject>(File.ReadAllText(path), Options) : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static void Touch(SharedProject p)
         {
             p.UpdatedAt = DateTime.UtcNow;

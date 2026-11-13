@@ -31,6 +31,11 @@ namespace YellowBlackEditor
             RemindersPanel.OpenNoteRequested += n => { RemindersPopup.IsOpen = false; SelectNode(n); };
             RemindersPanel.EntryChanged += _ => { SaveGeneralReminders(); RefreshReminders(); };
             RemindersPanel.EntryDeleted += DeleteReminder;
+            RemindersPanel.ColleagueRequested += () =>
+            {
+                RemindersPopup.IsOpen = false;
+                OpenTransfer(null, false, Transfer.KindReminder);
+            };
             RemindersPanel.AddRequested += r =>
             {
                 _generalReminders.Add(r);

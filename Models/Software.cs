@@ -6,6 +6,7 @@ namespace YellowBlackEditor.Models
 {
     public class ClientSoftware : Observable
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         private string _name = "";
         private string _note = "";
 
@@ -19,6 +20,7 @@ namespace YellowBlackEditor.Models
 
     public class SoftwareAddon : Observable
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public static readonly string[] Terms = { "Без срока", "1 месяц", "3 месяца", "6 месяцев", "1 год", "2 года", "3 года", "Своя дата" };
         private static readonly int?[] TermMonthsList = { null, 1, 3, 6, 12, 24, 36, null };
 
