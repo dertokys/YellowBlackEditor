@@ -304,6 +304,16 @@ namespace YellowBlackEditor.Views
         private void TextBoxColor_GotFocus(object sender, RoutedEventArgs e) => SetActive(TargetField.Text);
         private void PanelBox_GotFocus(object sender, RoutedEventArgs e) => SetActive(TargetField.Panel);
 
+        private void OpenBackups_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(MainWindow.BackupDir);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + MainWindow.BackupDir + "\""));
+            }
+            catch { }
+        }
+
         private void PickSyncFolder_Click(object sender, RoutedEventArgs e)
         {
             using var dlg = new System.Windows.Forms.FolderBrowserDialog

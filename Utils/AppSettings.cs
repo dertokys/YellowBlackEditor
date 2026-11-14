@@ -17,6 +17,8 @@ namespace YellowBlackEditor.Utils
         public bool AutoUpdate { get; set; } = true;
         public bool AutostartApplied { get; set; }
         public string SeenUpdate { get; set; } = "";
+        public List<string> SeenSubAlerts { get; set; } = new();
+        public string LastBackup { get; set; } = "";
 
         public static string UserId => Environment.MachineName + "\\" + Environment.UserName;
         public static string MachineName => Environment.MachineName;

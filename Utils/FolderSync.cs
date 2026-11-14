@@ -21,6 +21,7 @@ namespace YellowBlackEditor.Utils
         private const string ClientFile = "client.json";
         private const string ContractsFile = "contracts.json";
         private const string SoftwareFile = "software.json";
+        private const string HistoryFile = "history.json";
 
         private static bool IsClientFile(string rel) => Path.GetFileName(rel).Equals(ClientFile, StringComparison.OrdinalIgnoreCase);
 
@@ -246,7 +247,7 @@ namespace YellowBlackEditor.Utils
             var parts = rel.Split(Path.DirectorySeparatorChar);
             return parts.Length == 2 &&
                    (parts[1].Equals(ClientFile, StringComparison.OrdinalIgnoreCase) || parts[1].Equals(ContractsFile, StringComparison.OrdinalIgnoreCase) ||
-                    parts[1].Equals(SoftwareFile, StringComparison.OrdinalIgnoreCase)) &&
+                    parts[1].Equals(SoftwareFile, StringComparison.OrdinalIgnoreCase) || parts[1].Equals(HistoryFile, StringComparison.OrdinalIgnoreCase)) &&
                    !parts[0].Equals(TrashFolderName, StringComparison.OrdinalIgnoreCase);
         }
 

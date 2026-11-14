@@ -16,6 +16,7 @@ namespace YellowBlackEditor.Views
             public List<Item> Projects { get; } = new();
             public List<Item> Subscriptions { get; } = new();
             public List<Item> Time { get; } = new();
+            public List<Item> Contracts { get; } = new();
             public int MinutesToday { get; set; }
             public int MinutesWeek { get; set; }
         }
@@ -47,6 +48,9 @@ namespace YellowBlackEditor.Views
             Fill(ProjectsList, ProjectsEmpty, ProjectsCount, d.Projects);
             Fill(SubsList, SubsEmpty, SubsCount, d.Subscriptions);
             Fill(TimeList, TimeEmpty, TimeCount, d.Time);
+            ContractsCard.Visibility = d.Contracts.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ContractsList.ItemsSource = d.Contracts;
+            ContractsCount.Text = d.Contracts.Count > 0 ? d.Contracts.Count.ToString() : "";
             TimeCount.Text = d.MinutesToday > 0 ? TimeText.Human(d.MinutesToday) : "";
         }
 

@@ -165,6 +165,7 @@ namespace YellowBlackEditor
             }
 
             var rows = TimeStore.ScanAll(_workspacePath);
+            d.Contracts.AddRange(ContractItems(MonthMinutesByClient(rows, today)));
             var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
             d.MinutesToday = rows.Where(r => r.Entry.Date == today).Sum(r => r.Entry.Minutes);
             d.MinutesWeek = rows.Where(r => r.Entry.Date >= weekStart && r.Entry.Date <= today).Sum(r => r.Entry.Minutes);

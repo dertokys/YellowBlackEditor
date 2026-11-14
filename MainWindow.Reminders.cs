@@ -68,6 +68,7 @@ namespace YellowBlackEditor
                 {
                     if (_lastBalloonIsReminder) BringToFrontAndShowReminders();
                     else if (_balloonTransfer) OpenBalloonTransfer();
+                    else if (_balloonToday) OpenBalloonToday();
                     else if (_balloonSharedId != null) OpenBalloonShared();
                     else BringToFront();
                 };

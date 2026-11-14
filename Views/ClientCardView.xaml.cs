@@ -86,6 +86,7 @@ namespace YellowBlackEditor.Views
             ProjectsList.ItemsSource = null;
             SoftwareList.ItemsSource = null;
             TimeList.ItemsSource = null;
+            HistoryList.ItemsSource = null;
             RemindersList.ItemsSource = null;
         }
 
@@ -132,6 +133,9 @@ namespace YellowBlackEditor.Views
             UpdateContractUsage();
             SoftwareAlert.Visibility = _card.Software.SelectMany(s => s.Addons).Any(a => a.State >= 2) ? Visibility.Visible : Visibility.Collapsed;
             SoftwareEmpty.Visibility = _card.Software.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            var missing = MissingLicenses().Count;
+            ImportLicensesBtn.Visibility = missing > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ImportLicensesText.Text = $"Разложить лицензии 1С из комментария ({missing})";
             SetCount(RemindersCount, _reminders?.Count(r => !r.Done) ?? 0);
 
             ContactsEmpty.Visibility = _card.Contacts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -184,17 +188,111 @@ namespace YellowBlackEditor.Views
 
         private int _monthMinutes;
 
+        private List<(string Name, int Minutes)> _teamOthers = new();
+
+        public void SetTeamTime(List<(string Name, int Minutes)> others)
+        {
+            _teamOthers = others;
+            UpdateContractUsage();
+        }
+
+        public void ShowContracts() => Tabs.SelectedItem = ContractsTab;
+
+        private static readonly System.Text.RegularExpressions.Regex LicenseRx = new(
+            @"рег\.?\s*номер\s*(\d{6,})[^\n]*?PIN\s*([\d\-]{6,})(?:[^\n]*?на\s*(\d+)\s*р\.?\s*м)?(?:[^\n]*?\((?:папка:\s*)?([^)]+)\))?",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private List<(string Reg, string Name)> MissingLicenses()
+        {
+            var result = new List<(string, string)>();
+            if (_card == null || string.IsNullOrWhiteSpace(_card.Comment)) return result;
+            var known = _card.Software.SelectMany(s => s.Addons).Select(a => a.Name).ToList();
+            foreach (System.Text.RegularExpressions.Match m in LicenseRx.Matches(_card.Comment))
+            {
+                var reg = m.Groups[1].Value;
+                if (known.Any(k => k.Contains(reg)) || result.Any(r => r.Item1 == reg)) continue;
+                var name = $"рег. {reg}, PIN {m.Groups[2].Value}";
+                if (m.Groups[3].Success) name += $", {m.Groups[3].Value} р.м.";
+                if (m.Groups[4].Success) name += $" ({m.Groups[4].Value.Trim()})";
+                result.Add((reg, name));
+            }
+            return result;
+        }
+
+        private void ImportLicenses_Click(object sender, RoutedEventArgs e)
+        {
+            if (_card == null) return;
+            var missing = MissingLicenses();
+            if (missing.Count == 0) return;
+            var target = _card.Software.FirstOrDefault(s => s.Name.Trim().Equals("Лицензии 1С", StringComparison.CurrentCultureIgnoreCase));
+            if (target == null)
+            {
+                target = new ClientSoftware { Name = "Лицензии 1С", Note = "перенесено из комментария карточки" };
+                _card.Software.Add(target);
+            }
+            foreach (var (_, name) in missing)
+                target.Addons.Add(new SoftwareAddon { Name = name });
+            RefreshCounts();
+            StatusMessage?.Invoke($"Перенесено лицензий: {missing.Count}. Комментарий не тронут");
+        }
+
+        public sealed record HistoryItem(string When, string Path, string Change, string Old, Visibility CopyVisibility);
+
+        public void ShowHistory(List<HistoryEntry> entries)
+        {
+            var items = entries.OrderByDescending(e => e.At).Take(300).Select(e => new HistoryItem(
+                DateText.Human(e.At.ToLocalTime()) + " · " + (string.IsNullOrWhiteSpace(e.ByName) ? e.ById : e.ByName),
+                e.Path.Length == 0 ? "Карточка" : e.Path,
+                e.New == "добавлено" ? "добавлено" : e.New == "удалено" ? "удалено"
+                    : $"было: {(e.Old.Length == 0 ? "пусто" : Cut(e.Old))}  →  стало: {(e.New.Length == 0 ? "пусто" : Cut(e.New))}",
+                e.Old,
+                e.Old.Length > 0 && e.New != "удалено" && e.Old != "есть" ? Visibility.Visible : Visibility.Collapsed)).ToList();
+            HistoryList.ItemsSource = items;
+            HistoryEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static string Cut(string s) => s.Length > 80 ? s[..79] + "…" : s.Replace("\n", " ");
+
+        private void CopyOld_Click(object sender, RoutedEventArgs e)
+        {
+            if (Ctx<HistoryItem>(sender) is not { } item) return;
+            try
+            {
+                System.Windows.Clipboard.SetText(item.Old);
+                StatusMessage?.Invoke("Старое значение скопировано");
+            }
+            catch { }
+        }
+
         private void UpdateContractUsage()
         {
             if (_card == null) return;
-            var used = TimeText.Human(_monthMinutes);
-            string Text(ContractTerm t) => !t.Has
-                ? ""
-                : t.HoursValue is { } h
-                    ? $"В этом месяце вы учли {used} из {h:0.#} ч"
-                    : _monthMinutes > 0 ? $"В этом месяце вы учли {used}" : "";
-            SpoUsage.Text = Text(_card.Contracts.Spo);
-            KoUsage.Text = Text(_card.Contracts.Ko);
+            var total = _monthMinutes + _teamOthers.Sum(x => x.Minutes);
+            var who = new List<string>();
+            if (_monthMinutes > 0) who.Add("вы " + TimeText.Human(_monthMinutes));
+            who.AddRange(_teamOthers.Select(x => $"{x.Name} {TimeText.Human(x.Minutes)}"));
+            var whoText = who.Count > 0 ? ": " + string.Join(", ", who) : "";
+            var month = DateTime.Today.ToString("MMMM", System.Globalization.CultureInfo.GetCultureInfo("ru-RU"));
+            var c = _card.Contracts;
+            double hours = 0;
+            if (c.Spo.Has && c.Spo.HoursValue is { } spo) hours += spo;
+            if (c.Ko.Has && c.Ko.HoursValue is { } ko) hours += ko;
+            var both = c.Spo.Has && c.Spo.HoursValue != null && c.Ko.Has && c.Ko.HoursValue != null;
+            string Text(ContractTerm t)
+            {
+                if (!t.Has) return "";
+                if (hours > 0 && t.HoursValue != null)
+                {
+                    var left = hours * 60 - total;
+                    var tail = left < 0 ? $" Сверх договора: {TimeText.Human((int)-left)}." : "";
+                    return $"За {month} команда учла {TimeText.Human(total)} из {hours:0.#} ч{(both ? " по обоим договорам" : "")}{whoText}.{tail}";
+                }
+                return total > 0 ? $"За {month} команда учла {TimeText.Human(total)}{whoText}." : "";
+            }
+            SpoUsage.Text = Text(c.Spo);
+            KoUsage.Text = Text(c.Ko);
+            SpoUsage.Foreground = (System.Windows.Media.Brush)FindResource(hours > 0 && total > hours * 60 ? "DangerBrush" : "SubTextBrush");
+            KoUsage.Foreground = SpoUsage.Foreground;
         }
 
         public void ShowTimeTab() => Tabs.SelectedItem = TimeTab;

@@ -133,6 +133,12 @@
                         </StackPanel>
                     </CheckBox>
 
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <TextBlock Text="Каждый день программа сама сохраняет копию рабочей папки, хранит 14 последних." VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SubTextBrush}" FontSize="12" TextWrapping="Wrap" MaxWidth="420"/>
+                        <Button Style="{DynamicResource TextButton}" Content="Открыть копии" Margin="8,0,0,0" Click="OpenBackups_Click"/>
+                    </StackPanel>
+
                     <TextBlock Text="Ваше имя в общих проектах" Margin="30,12,0,6"/>
                     <TextBox x:Name="UserNameBox" Style="{DynamicResource FieldBox}" Margin="30,0,0,4" MaxLength="60"/>
                     <TextBlock x:Name="UserIdText" Foreground="{DynamicResource SubTextBrush}" FontSize="12" Margin="30,2,0,4" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"/>

@@ -127,12 +127,11 @@
                            ToolTip="{Binding Text, ElementName=WorkspaceText}"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBlock x:Name="StatusText" Text="Готово" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="16,0,0,0"/>
-                    <Button x:Name="SyncBtn" Style="{DynamicResource TextButton}" Height="24" Margin="12,0,0,0" Visibility="Collapsed" Click="SyncNow_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,1,6,0"/>
-                            <TextBlock x:Name="SyncText" Text="Обмен"/>
-                        </StackPanel>
-                    </Button>
+                    <StackPanel x:Name="SyncBtn" Orientation="Horizontal" Background="Transparent" Margin="16,0,0,0" Visibility="Collapsed" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,1,6,0"
+                                   Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock x:Name="SyncText" Text="Обмен" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
@@ -281,6 +280,13 @@
                                 <TextBlock x:Name="NoteReminderText" Text="Напомнить" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <Border x:Name="PresenceBadge" Visibility="Collapsed" CornerRadius="10" Padding="10,3" Margin="10,0,0,4" VerticalAlignment="Center"
+                                Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,1,6,0"/>
+                                <TextBlock x:Name="PresenceText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                     <TextBlock Grid.Column="3" x:Name="DirtyText" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Bottom" Margin="0,0,0,8"
                                ToolTip="Сохраняется само через 1,5 секунды после правки. Ctrl+S сохраняет сразу"/>

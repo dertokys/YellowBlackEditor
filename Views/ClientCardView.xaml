@@ -584,6 +584,13 @@
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <Button x:Name="ImportLicensesBtn" Style="{DynamicResource TextButton}" HorizontalAlignment="Left" Margin="-10,0,0,8" Visibility="Collapsed"
+                            Click="ImportLicenses_Click" ToolTip="Комментарий на «Реквизитах» останется как есть">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8B5;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                            <TextBlock x:Name="ImportLicensesText" Text="Разложить лицензии 1С из комментария"/>
+                        </StackPanel>
+                    </Button>
                     <TextBlock x:Name="SoftwareEmpty" Style="{StaticResource EmptyHint}"
                                Text="Какие программы стоят у клиента: 1С, Frontol, iiko. К каждой можно добавить подписки и лицензии со сроком: ИТС, ОФД, ФН, ЭЦП. Что скоро закончится, будет видно на странице «Сегодня»."/>
                     <ItemsControl x:Name="SoftwareList" Focusable="False">
@@ -894,6 +901,37 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Button Style="{DynamicResource TextButton}" Content="+ Добавить заметку" HorizontalAlignment="Left" Margin="-10,4,0,0" Click="AddNote_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem x:Name="HistoryTab" Header="История">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,16,0,24" MaxWidth="1040">
+                    <TextBlock x:Name="HistoryEmpty" Style="{StaticResource EmptyHint}"
+                               Text="Здесь видно, кто и когда менял карточку: пароли точек, телефоны, реквизиты, договоры, подписки. История общая для всех, у кого обмен."/>
+                    <ItemsControl x:Name="HistoryList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush1}" BorderThickness="1"
+                                        CornerRadius="6" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding When}" Foreground="{DynamicResource SubTextBrush}" FontSize="12"/>
+                                            <TextBlock Text="{Binding Path}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Change}" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{DynamicResource TextButton}" Content="Скопировать старое" VerticalAlignment="Center"
+                                                Visibility="{Binding CopyVisibility}" Click="CopyOld_Click" Margin="8,0,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

@@ -122,6 +122,15 @@
                             <ItemsControl x:Name="ProjectsList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
                         </StackPanel>
                     </Border>
+                    <Border x:Name="ContractsCard" Style="{DynamicResource CardBorder}" Visibility="Collapsed">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Часы по договорам" Style="{StaticResource CardHead}"/>
+                                <TextBlock x:Name="ContractsCount" HorizontalAlignment="Right" Foreground="{DynamicResource SubTextBrush}"/>
+                            </Grid>
+                            <ItemsControl x:Name="ContractsList" ItemTemplate="{StaticResource ItemTemplate}" Focusable="False"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <Border Style="{DynamicResource CardBorder}">

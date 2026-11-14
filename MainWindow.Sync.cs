@@ -84,7 +84,6 @@ namespace YellowBlackEditor
             _syncSoonTimer.Start();
         }
 
-        private void SyncNow_Click(object sender, RoutedEventArgs e) => RunSync(manual: true);
 
         private void SyncNowButton_Click(object sender, RoutedEventArgs e)
         {
@@ -108,6 +107,9 @@ namespace YellowBlackEditor
             var sync = new FolderSync(ClientsRoot, _appSettings.SyncFolder, _appConfigDir);
             var exchange = _appSettings.SyncFolder;
             var myName = _appSettings.DisplayName;
+            var workspace = _workspacePath;
+            var presenceClient = _presenceClient;
+            var presenceSince = _presenceSince;
 
             Task.Run(() =>
             {
@@ -133,7 +135,18 @@ namespace YellowBlackEditor
                 catch (Exception ex) { LogError("Общие проекты", ex); }
                 try { inbox = Transfers.LoadInbox(exchange, AppSettings.UserId); }
                 catch (Exception ex) { LogError("Входящие передачи", ex); }
-                return (result, shared, people, inbox, update);
+                List<TeamMonth>? team = null;
+                List<PresenceInfo>? presence = null;
+                try
+                {
+                    var month = DateTime.Today;
+                    TeamData.PublishMonth(exchange, myName, month, MonthMinutesByClient(TimeStore.ScanAll(workspace), month));
+                    team = TeamData.LoadMonth(exchange, month);
+                    TeamData.PublishPresence(exchange, myName, presenceClient, presenceSince);
+                    presence = TeamData.LoadPresence(exchange);
+                }
+                catch (Exception ex) { LogError("Данные команды", ex); }
+                return (result, shared, people, inbox, update, team, presence);
             }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
                 _syncRunning = false;
@@ -156,12 +169,13 @@ namespace YellowBlackEditor
                         Status(unavailable ? $"Папка обмена недоступна: {_appSettings.SyncFolder}" : "Обмен не удался: " + ex.Message);
                     return;
                 }
-                var (r, shared, people, inbox, update) = t.Result;
+                var (r, shared, people, inbox, update, team, presence) = t.Result;
+                ApplyTeamData(team, presence);
                 ApplyUpdateInfo(update);
                 if (people != null) _people = people;
                 if (inbox != null && exchange == _appSettings.SyncFolder) UpdateInbox(inbox, notify: true);
                 SyncText.Text = "Обмен: " + DateTime.Now.ToString("HH:mm");
-                SyncBtn.ToolTip = $"Папка обмена: {_appSettings.SyncFolder}. Нажмите, чтобы обменяться сейчас";
+                SyncBtn.ToolTip = $"Последний обмен с папкой {_appSettings.SyncFolder}. Обменяться сейчас — кнопка «Обменяться» вверху";
                 if (r.Conflicts > 0)
                     Status($"Обмен: одно и то же поле меняли двое ({string.Join("; ", r.ConflictFields.Take(2))}), оставлено более свежее значение. Второе сохранено в {Path.Combine(_appConfigDir, "conflicts")}");
                 else if (r.Merged > 0)

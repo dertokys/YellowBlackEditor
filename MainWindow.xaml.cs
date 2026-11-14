@@ -106,6 +106,7 @@ namespace YellowBlackEditor
             InitShared();
             InitToday();
             InitUpdates();
+            InitCare();
 
             _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); SaveAll(); };
@@ -356,6 +357,7 @@ namespace YellowBlackEditor
             }
             LoadClientProjects();
             LoadClientSoftware();
+            LoadClientContracts();
             RefreshSharedGroup();
             WarmSearchCache();
         }
@@ -574,6 +576,9 @@ namespace YellowBlackEditor
             UpdateTitle();
             UpdateNoteReminderButton();
             UpdateTimeButton();
+            SetPresenceClient(_currentClientNode?.Name ?? (_currentDocNode != null ? TimeStore.Describe(_workspacePath, _currentDocNode.FullPath).Client : ""));
+            UpdatePresenceBadge();
+            if (_currentClientNode != null) ClientView.SetTeamTime(OthersMinutes(_currentClientNode.Name));
         }
 
         private NodeViewModel? _emptyStateNode;
@@ -752,6 +757,7 @@ namespace YellowBlackEditor
                 _emptyStateNode = null;
                 ClientView.Show(node, card, ClientRemindersFor(node, card));
                 ClientView.ShowTime(TimeStore.ScanFolder(_workspacePath, node.FullPath));
+                ClientView.ShowHistory(CardHistory.Load(node.FullPath));
 
                 CurrentKindText.Text = "Клиент";
                 CurrentFileText.Text = node.Name;
@@ -910,10 +916,15 @@ namespace YellowBlackEditor
             if (_currentClientNode == null || _currentClient == null) return true;
             try
             {
-                ClientStore.Save(_currentClientNode.FullPath, _currentClient);
+                var folder = _currentClientNode.FullPath;
+                var files = new[] { ClientStore.FileName, ClientStore.ContractsFileName, ClientStore.SoftwareFileName };
+                var before = files.Select(f => File.Exists(Path.Combine(folder, f)) ? File.ReadAllText(Path.Combine(folder, f)) : null).ToArray();
+                ClientStore.Save(folder, _currentClient);
                 _clientDirty = false;
+                RecordHistory(folder, files, before);
                 UpdateClientProjects(_currentClientNode, _currentClient.Projects);
                 UpdateClientSoftware(_currentClientNode, _currentClient.Software);
+                UpdateClientContracts(_currentClientNode, _currentClient.Contracts);
                 if (_currentClient.Projects.Any(p => p.SharedId != null && SharedProjects.Hash(p) != p.SharedHash)) SyncSoon();
                 _contentCache.Remove(_currentClientNode.FullPath);
                 MarkSaved();
@@ -924,6 +935,35 @@ namespace YellowBlackEditor
             {
                 ReportSaveError("Не удалось сохранить карточку клиента", ex, "Данные остались в окне. Проверьте, что рабочая папка доступна, и нажмите Ctrl+S.", quiet);
                 return false;
+            }
+        }
+
+        private void RecordHistory(string folder, string[] files, string?[] before)
+        {
+            try
+            {
+                var prefixes = new[] { "", "", "ПО" };
+                var entries = new List<HistoryEntry>();
+                for (var i = 0; i < files.Length; i++)
+                {
+                    var path = Path.Combine(folder, files[i]);
+                    var after = File.Exists(path) ? File.ReadAllText(path) : null;
+                    if (after == before[i] || before[i] == null) continue;
+                    entries.AddRange(CardHistory.Diff(before[i], after, prefixes[i]));
+                }
+                if (entries.Count == 0) return;
+                foreach (var e in entries)
+                {
+                    e.ById = AppSettings.UserId;
+                    e.ByName = _appSettings.DisplayName;
+                }
+                CardHistory.Append(folder, entries);
+                if (_currentClientNode?.FullPath == folder)
+                    ClientView.ShowHistory(CardHistory.Load(folder));
+            }
+            catch (Exception ex)
+            {
+                LogError("История изменений", ex);
             }
         }
 
