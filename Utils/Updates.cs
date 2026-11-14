@@ -98,6 +98,10 @@ namespace YellowBlackEditor.Utils
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "YellowBlackNotes-update");
             Directory.CreateDirectory(tempDir);
             var local = System.IO.Path.Combine(tempDir, System.IO.Path.GetFileName(target.Path));
+            var size = new FileInfo(target.Path).Length;
+            System.Threading.Thread.Sleep(3000);
+            var info = new FileInfo(target.Path);
+            if (info.Length != size || DateTime.UtcNow - info.LastWriteTimeUtc < TimeSpan.FromSeconds(10)) return false;
             File.Copy(target.Path, local, true);
             try
             {

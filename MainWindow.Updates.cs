@@ -34,7 +34,7 @@ namespace YellowBlackEditor
             UpdateBtn.ToolTip = $"В папке обмена лежит версия {v}. У вас {Updates.Current.ToString(3)}";
 
             if (_updateStarted) return;
-            if (_appSettings.AutoUpdate && DateTime.Now - _startedAt < TimeSpan.FromMinutes(3))
+            if (_appSettings.AutoUpdate && DateTime.Now - _startedAt < TimeSpan.FromMinutes(3) && _appSettings.UpdateAttemptVersion != v)
             {
                 RunUpdate(auto: true);
                 return;
@@ -58,30 +58,36 @@ namespace YellowBlackEditor
 
         private void UpdateButton_Click(object sender, RoutedEventArgs e) => RunUpdate(auto: false);
 
-        private void RunUpdate(bool auto)
+        private async void RunUpdate(bool auto)
         {
             if (_updateTarget is not { } target || _updateStarted) return;
             if (!auto && !ThemedMessageBox.Confirm(this, $"Обновить до версии {target.Version.ToString(3)}?",
                     "Программа закроется, поставит новую версию и сразу откроется снова. Windows может спросить разрешение на установку.", "Обновить"))
                 return;
             SaveAll(quiet: true);
+            _updateStarted = true;
+            _appSettings.UpdateAttemptVersion = target.Version.ToString(3);
+            _appSettings.Save();
+            Status("Готовлю обновление " + target.Version.ToString(3) + "…");
             bool started;
+            var toTray = !IsVisible || auto;
             try
             {
-                started = Updates.Launch(target, !IsVisible || auto);
+                started = await Task.Run(() => Updates.Launch(target, toTray));
             }
             catch (Exception ex)
             {
                 LogError("Не удалось запустить обновление", ex);
                 Status("Не удалось запустить обновление: " + ex.Message);
+                _updateStarted = false;
                 return;
             }
             if (!started)
             {
-                Status("Обновление отменено. Нажмите «Обновить» вверху, когда будет удобно");
+                Status("Обновление не запустилось. Нажмите «Обновить» вверху, когда будет удобно");
+                _updateStarted = false;
                 return;
             }
-            _updateStarted = true;
             ExitApp();
         }
     }

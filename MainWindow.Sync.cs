@@ -108,8 +108,6 @@ namespace YellowBlackEditor
             var exchange = _appSettings.SyncFolder;
             var myName = _appSettings.DisplayName;
             var workspace = _workspacePath;
-            var presenceClient = _presenceClient;
-            var presenceSince = _presenceSince;
 
             Task.Run(() =>
             {
@@ -137,15 +135,15 @@ namespace YellowBlackEditor
                 catch (Exception ex) { LogError("Входящие передачи", ex); }
                 List<TeamMonth>? team = null;
                 List<PresenceInfo>? presence = null;
-                try
-                {
-                    var month = DateTime.Today;
-                    TeamData.PublishMonth(exchange, myName, month, MonthMinutesByClient(TimeStore.ScanAll(workspace), month));
-                    team = TeamData.LoadMonth(exchange, month);
-                    TeamData.PublishPresence(exchange, myName, presenceClient, presenceSince);
-                    presence = TeamData.LoadPresence(exchange);
-                }
-                catch (Exception ex) { LogError("Данные команды", ex); }
+                var month = DateTime.Today;
+                try { TeamData.PublishMonth(exchange, myName, month, MonthMinutesByClient(TimeStore.ScanAll(workspace), month)); }
+                catch (Exception ex) { LogError("Часы команды", ex); }
+                try { team = TeamData.LoadMonth(exchange, month); }
+                catch (Exception ex) { LogError("Часы команды", ex); }
+                try { TeamData.PublishPresence(exchange, myName, _presenceClient, _presenceSince); }
+                catch (Exception ex) { LogError("Присутствие", ex); }
+                try { presence = TeamData.LoadPresence(exchange); }
+                catch (Exception ex) { LogError("Присутствие", ex); }
                 return (result, shared, people, inbox, update, team, presence);
             }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
             {
@@ -200,6 +198,11 @@ namespace YellowBlackEditor
                 f.StartsWith(current.FullPath + "\\", StringComparison.OrdinalIgnoreCase) &&
                 Path.GetDirectoryName(f)!.Equals(current.FullPath, StringComparison.OrdinalIgnoreCase));
             var canReload = currentChanged && !_isDirty && !_clientDirty;
+            if (currentChanged && current?.Type == NodeType.Client && _clientDirty && !_isDirty && MergeDirtyClient())
+            {
+                _saveTimer.Stop();
+                canReload = true;
+            }
 
             if (r.StructureChanged)
             {

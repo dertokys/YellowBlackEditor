@@ -376,6 +376,7 @@ namespace YellowBlackEditor
         private void ExitApp()
         {
             _exitRequested = true;
+            ClearPresenceNow();
             if (!IsVisible) Show();
             Close();
             if (IsLoaded && IsVisible) _exitRequested = false;
@@ -388,6 +389,7 @@ namespace YellowBlackEditor
             SaveAll(quiet: true);
             SaveWindowPlacement();
             RemindersPopup.IsOpen = false;
+            ClearPresenceNow();
             Hide();
             if (!_appSettings.TrayHintShown)
             {

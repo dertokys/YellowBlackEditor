@@ -746,6 +746,7 @@ namespace YellowBlackEditor
             try
             {
                 var card = ClientStore.Load(node.FullPath);
+                _loadedTexts = ClientStore.DiskTexts(node.FullPath);
                 _currentClient = card;
                 _currentClientNode = node;
                 card.Changed += CurrentClient_Changed;
@@ -921,6 +922,7 @@ namespace YellowBlackEditor
                 var before = files.Select(f => File.Exists(Path.Combine(folder, f)) ? File.ReadAllText(Path.Combine(folder, f)) : null).ToArray();
                 ClientStore.Save(folder, _currentClient);
                 _clientDirty = false;
+                _loadedTexts = ClientStore.DiskTexts(folder);
                 RecordHistory(folder, files, before);
                 UpdateClientProjects(_currentClientNode, _currentClient.Projects);
                 UpdateClientSoftware(_currentClientNode, _currentClient.Software);
@@ -934,6 +936,51 @@ namespace YellowBlackEditor
             catch (Exception ex)
             {
                 ReportSaveError("Не удалось сохранить карточку клиента", ex, "Данные остались в окне. Проверьте, что рабочая папка доступна, и нажмите Ctrl+S.", quiet);
+                return false;
+            }
+        }
+
+        private Dictionary<string, string?> _loadedTexts = new();
+
+        private bool MergeDirtyClient()
+        {
+            if (_currentClientNode == null || _currentClient == null) return false;
+            var folder = _currentClientNode.FullPath;
+            try
+            {
+                var mine = ClientStore.Texts(_currentClient);
+                var disk = ClientStore.DiskTexts(folder);
+                foreach (var (file, theirs) in disk)
+                {
+                    _loadedTexts.TryGetValue(file, out var baseText);
+                    if (theirs == null || theirs == baseText) continue;
+                    var b = JsonMerge.Parse(baseText) ?? JsonMerge.Parse(theirs);
+                    var l = JsonMerge.Parse(mine[file]);
+                    var r = JsonMerge.Parse(theirs);
+                    if (b == null || l == null || r == null) continue;
+                    JsonMerge.EnsureIds(b);
+                    JsonMerge.EnsureIds(l);
+                    JsonMerge.EnsureIds(r);
+                    var merged = JsonMerge.Merge(b, l, r, true).Merged;
+                    if (merged == null) continue;
+                    mine[file] = merged.ToJsonString(new System.Text.Json.JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    });
+                }
+                foreach (var (file, text) in mine)
+                    if (disk[file] != text && (disk[file] != null || file == ClientStore.FileName ||
+                        (file == ClientStore.ContractsFileName && !_currentClient.Contracts.IsEmpty) ||
+                        (file == ClientStore.SoftwareFileName && _currentClient.Software.Count > 0)))
+                        ClientStore.WriteText(folder, file, text);
+                _clientDirty = false;
+                Status("Карточку одновременно правил коллега: ваши и его изменения объединены");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError("Не удалось объединить открытую карточку", ex);
                 return false;
             }
         }

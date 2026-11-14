@@ -251,7 +251,11 @@ namespace YellowBlackEditor.Views
             HistoryEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private static string Cut(string s) => s.Length > 80 ? s[..79] + "…" : s.Replace("\n", " ");
+        private static string Cut(string s)
+        {
+            s = s.Replace("\r", " ").Replace("\n", " ");
+            return s.Length > 80 ? s[..79] + "…" : s;
+        }
 
         private void CopyOld_Click(object sender, RoutedEventArgs e)
         {
@@ -290,7 +294,7 @@ namespace YellowBlackEditor.Views
                 return total > 0 ? $"За {month} команда учла {TimeText.Human(total)}{whoText}." : "";
             }
             SpoUsage.Text = Text(c.Spo);
-            KoUsage.Text = Text(c.Ko);
+            KoUsage.Text = both ? "" : Text(c.Ko);
             SpoUsage.Foreground = (System.Windows.Media.Brush)FindResource(hours > 0 && total > hours * 60 ? "DangerBrush" : "SubTextBrush");
             KoUsage.Foreground = SpoUsage.Foreground;
         }

@@ -57,12 +57,36 @@ namespace YellowBlackEditor.Utils
             }
         }
 
+        private static readonly string[] SecretFields = { "Пароль", "PIN" };
+
+        private static string Clip(string s) => s.Length > 300 ? s[..299] + "…" : s;
+
         public static void Append(string folder, IEnumerable<HistoryEntry> entries)
         {
             var add = entries.ToList();
             if (add.Count == 0) return;
-            var list = Load(folder);
-            list.AddRange(add);
+            var path0 = PathFor(folder);
+            var list = File.Exists(path0)
+                ? JsonSerializer.Deserialize<List<HistoryEntry>>(File.ReadAllText(path0), Options) ?? new()
+                : new List<HistoryEntry>();
+            foreach (var e in add)
+            {
+                if (SecretFields.Any(f => e.Path.EndsWith(f)) && e.Old != "есть" && e.New is not ("добавлено" or "удалено"))
+                {
+                    e.Old = e.Old.Length > 0 ? "••••" : "";
+                    e.New = "изменён";
+                }
+                e.Old = Clip(e.Old);
+                e.New = Clip(e.New);
+                var last = list.LastOrDefault(x => x.Path == e.Path && x.ById == e.ById);
+                if (last != null && e.At - last.At < TimeSpan.FromMinutes(30) && last.New is not ("добавлено" or "удалено") && e.New is not ("добавлено" or "удалено"))
+                {
+                    last.New = e.New;
+                    last.At = e.At;
+                    continue;
+                }
+                list.Add(e);
+            }
             list = list.OrderBy(e => e.At).TakeLast(Limit).ToList();
             var path = PathFor(folder);
             var tmp = path + ".tmp";

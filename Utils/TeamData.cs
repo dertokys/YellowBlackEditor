@@ -21,7 +21,7 @@ namespace YellowBlackEditor.Utils
         public DateTime Since { get; set; }
         public DateTime Beat { get; set; }
 
-        public bool IsFresh => DateTime.UtcNow - Beat < TimeSpan.FromMinutes(3);
+        public bool IsFresh => Client.Length > 0 && Math.Abs((DateTime.UtcNow - Beat).TotalMinutes) < 5;
     }
 
     public static class TeamData
@@ -41,7 +41,7 @@ namespace YellowBlackEditor.Utils
         {
             if (File.Exists(path) && File.ReadAllText(path) == json) return;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var tmp = path + "." + Environment.MachineName + ".tmp";
+            var tmp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
             File.WriteAllText(tmp, json, new UTF8Encoding(false));
             File.Move(tmp, path, true);
         }
@@ -70,7 +70,7 @@ namespace YellowBlackEditor.Utils
             var path = Path.Combine(exchange, PresenceFolder, Safe(AppSettings.UserId) + ".json");
             var data = new PresenceInfo { Id = AppSettings.UserId, Name = name, Client = client, Since = since, Beat = DateTime.UtcNow };
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var tmp = path + "." + Environment.MachineName + ".tmp";
+            var tmp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(data, Options), new UTF8Encoding(false));
             File.Move(tmp, path, true);
         }

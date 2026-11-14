@@ -36,7 +36,7 @@ namespace YellowBlackEditor
                     foreach (var a in s.Addons)
                     {
                         if (a.DaysLeft is not { } days || a.Ends is not { } ends) continue;
-                        int? stage = days < 0 ? -1 : days <= 1 ? 1 : days <= 7 ? 7 : days <= 30 ? 30 : null;
+                        int? stage = days < -7 ? null : days < 0 ? -1 : days <= 1 ? 1 : days <= 7 ? 7 : days <= 30 ? 30 : null;
                         if (stage == null) continue;
                         var key = $"{a.Id}|{stage}|{ends:yyyyMMdd}";
                         if (_appSettings.SeenSubAlerts.Contains(key)) continue;
@@ -46,7 +46,7 @@ namespace YellowBlackEditor
             }
             if (alerts.Count == 0) return;
             _appSettings.SeenSubAlerts.AddRange(alerts.Select(a => a.Key));
-            if (_appSettings.SeenSubAlerts.Count > 500) _appSettings.SeenSubAlerts.RemoveRange(0, _appSettings.SeenSubAlerts.Count - 500);
+            if (_appSettings.SeenSubAlerts.Count > 2000) _appSettings.SeenSubAlerts.RemoveRange(0, _appSettings.SeenSubAlerts.Count - 2000);
             _appSettings.Save();
 
             var title = alerts.Count == 1 ? "Подписка заканчивается" : $"Заканчиваются подписки: {alerts.Count}";
@@ -84,24 +84,34 @@ namespace YellowBlackEditor
                 var target = Path.Combine(BackupDir, $"{today} {SanitizeName(Path.GetFileName(workspace))}.zip");
                 var tmp = target + ".tmp";
                 var skipped = 0;
-                using (var fs = new FileStream(tmp, FileMode.Create))
-                using (var zip = new ZipArchive(fs, ZipArchiveMode.Create, false, System.Text.Encoding.UTF8))
+                try
                 {
-                    foreach (var file in Directory.EnumerateFiles(workspace, "*", SearchOption.AllDirectories))
+                    using (var fs = new FileStream(tmp, FileMode.Create))
+                    using (var zip = new ZipArchive(fs, ZipArchiveMode.Create, false, System.Text.Encoding.UTF8))
                     {
-                        var name = Path.GetFileName(file);
-                        if (name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".synctmp", StringComparison.OrdinalIgnoreCase)) continue;
-                        try
+                        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+                        foreach (var file in Directory.EnumerateFiles(workspace, "*", options))
                         {
-                            zip.CreateEntryFromFile(file, Path.GetRelativePath(workspace, file), CompressionLevel.Optimal);
-                        }
-                        catch
-                        {
-                            skipped++;
+                            var name = Path.GetFileName(file);
+                            if (name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".synctmp", StringComparison.OrdinalIgnoreCase)) continue;
+                            try
+                            {
+                                if (new FileInfo(file).Length > 50L * 1024 * 1024) { skipped++; continue; }
+                                zip.CreateEntryFromFile(file, Path.GetRelativePath(workspace, file), CompressionLevel.Fastest);
+                            }
+                            catch
+                            {
+                                skipped++;
+                            }
                         }
                     }
+                    File.Move(tmp, target, true);
                 }
-                File.Move(tmp, target, true);
+                catch
+                {
+                    try { File.Delete(tmp); } catch { }
+                    throw;
+                }
                 foreach (var old in new DirectoryInfo(BackupDir).GetFiles("*.zip").OrderByDescending(f => f.Name).Skip(14))
                 {
                     try { old.Delete(); } catch { }

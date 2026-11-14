@@ -170,6 +170,19 @@ namespace YellowBlackEditor.Utils
             }
         }
 
+        public static Dictionary<string, string> Texts(ClientCard card) => new()
+        {
+            [FileName] = JsonSerializer.Serialize(card, Options),
+            [ContractsFileName] = JsonSerializer.Serialize(card.Contracts, Options),
+            [SoftwareFileName] = JsonSerializer.Serialize(card.Software, Options)
+        };
+
+        public static Dictionary<string, string?> DiskTexts(string folder) =>
+            new[] { FileName, ContractsFileName, SoftwareFileName }
+                .ToDictionary(f => f, f => File.Exists(Path.Combine(folder, f)) ? File.ReadAllText(Path.Combine(folder, f)) : null);
+
+        public static void WriteText(string folder, string file, string text) => WriteAtomic(Path.Combine(folder, file), text);
+
         public static void Save(string folder, ClientCard card)
         {
             var cardPath = CardPath(folder);

@@ -62,13 +62,26 @@ namespace YellowBlackEditor
                 .OrderByDescending(x => x.Minutes)
                 .ToList();
 
+        private string _teamSignature = "";
+
         private void ApplyTeamData(List<TeamMonth>? month, List<PresenceInfo>? presence)
         {
             if (month != null) _teamMonth = month;
             if (presence != null) _presence = presence;
             UpdatePresenceBadge();
             if (_currentClientNode != null) ClientView.SetTeamTime(OthersMinutes(_currentClientNode.Name));
+            var signature = string.Join("|", _teamMonth.OrderBy(t => t.UserId).Select(t => t.UserId + ":" + string.Join(",", t.Clients.Select(kv => kv.Key + "=" + kv.Value))));
+            if (signature == _teamSignature) return;
+            _teamSignature = signature;
             RefreshTodayIfShown();
+        }
+
+        private void ClearPresenceNow()
+        {
+            _presenceClient = "";
+            if (!_appSettings.SyncEnabled || string.IsNullOrWhiteSpace(_appSettings.SyncFolder)) return;
+            try { TeamData.PublishPresence(_appSettings.SyncFolder, _appSettings.DisplayName, "", DateTime.UtcNow); }
+            catch { }
         }
 
         private void UpdatePresenceBadge()

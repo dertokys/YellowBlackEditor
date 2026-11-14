@@ -12,6 +12,7 @@ namespace YellowBlackEditor.Utils
         public int Downloaded { get; set; }
         public int Conflicts { get; set; }
         public int Merged { get; set; }
+        public int Errors { get; set; }
         public List<string> ConflictFields { get; } = new();
     }
 
@@ -95,8 +96,9 @@ namespace YellowBlackEditor.Utils
         private (string Text, List<string> Conflicts)? TryMerge(string rel, string lPath, string rPath, bool preferLocal)
         {
             var basePath = BasePath(rel);
-            if (!File.Exists(basePath)) return null;
-            var b = JsonMerge.Parse(File.ReadAllText(basePath));
+            var isHistory = Path.GetFileName(rel).Equals(HistoryFile, StringComparison.OrdinalIgnoreCase);
+            if (!File.Exists(basePath) && !isHistory) return null;
+            var b = File.Exists(basePath) ? JsonMerge.Parse(File.ReadAllText(basePath)) : new System.Text.Json.Nodes.JsonArray();
             var l = JsonMerge.Parse(File.ReadAllText(lPath));
             var r = JsonMerge.Parse(File.ReadAllText(rPath));
             if (b == null || l == null || r == null) return null;
@@ -125,7 +127,18 @@ namespace YellowBlackEditor.Utils
 
             foreach (var rel in local.Keys.Union(remote.Keys, StringComparer.OrdinalIgnoreCase))
             {
-                if (!IsClientFile(rel) && !local.ContainsKey(ClientFileFor(rel)) && !remote.ContainsKey(ClientFileFor(rel))) continue;
+                try
+                {
+                if (!IsClientFile(rel) && !local.ContainsKey(ClientFileFor(rel)) && !remote.ContainsKey(ClientFileFor(rel)))
+                {
+                    if (remote.ContainsKey(rel) && state.ContainsKey(rel))
+                    {
+                        MoveToRemoteTrash(Safe(_remoteRoot, rel), rel);
+                        RemoveEmptyParents(Path.GetDirectoryName(Safe(_remoteRoot, rel))!, _remoteRoot);
+                        DeleteBase(rel);
+                    }
+                    continue;
+                }
                 local.TryGetValue(rel, out var l);
                 remote.TryGetValue(rel, out var r);
                 state.TryGetValue(rel, out var s);
@@ -138,7 +151,7 @@ namespace YellowBlackEditor.Utils
                     var rChanged = s == null || !Same(r.LastWriteTimeUtc.Ticks, s.R);
                     if (lChanged && rChanged && !SameContent(l, r) && TryMerge(rel, lPath, rPath, l.LastWriteTimeUtc >= r.LastWriteTimeUtc) is { } merged)
                     {
-                        if (!StillSame(rPath, r))
+                        if (!StillSame(rPath, r) || !StillSame(lPath, l))
                         {
                             if (s != null) newState[rel] = s;
                             continue;
@@ -160,12 +173,13 @@ namespace YellowBlackEditor.Utils
                     }
                     else if (lChanged && rChanged && !SameContent(l, r))
                     {
-                        if (!StillSame(rPath, r))
+                        if (!StillSame(rPath, r) || !StillSame(lPath, l))
                         {
                             if (s != null) newState[rel] = s;
                             continue;
                         }
                         result.Conflicts++;
+                        result.ConflictFields.Add(Path.GetDirectoryName(rel) + ": весь файл");
                         if (l.LastWriteTimeUtc >= r.LastWriteTimeUtc)
                         {
                             BackupConflict(rPath, rel, "из папки обмена");
@@ -192,6 +206,11 @@ namespace YellowBlackEditor.Utils
                     }
                     else if (rChanged && !lChanged)
                     {
+                        if (!StillSame(lPath, l))
+                        {
+                            if (s != null) newState[rel] = s;
+                            continue;
+                        }
                         Copy(rPath, lPath, _localRoot);
                         result.Downloaded++;
                         result.LocalChanged.Add(rel);
@@ -233,6 +252,12 @@ namespace YellowBlackEditor.Utils
                     result.StructureChanged = true;
                     newState[rel] = new Entry { L = new FileInfo(lPath).LastWriteTimeUtc.Ticks, R = r.LastWriteTimeUtc.Ticks };
                     SaveBase(rel, lPath);
+                }
+                }
+                catch (Exception)
+                {
+                    result.Errors++;
+                    if (state.TryGetValue(rel, out var keep)) newState[rel] = keep;
                 }
             }
 

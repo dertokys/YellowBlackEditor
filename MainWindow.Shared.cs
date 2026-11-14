@@ -131,6 +131,8 @@ namespace YellowBlackEditor
         {
             NotifySharedChanges(remote);
             _shared = remote;
+            remote = remote.GroupBy(p => p.Id).Select(g => g.OrderByDescending(p => p.UpdatedAt).First()).ToList();
+            _shared = remote;
             var byId = remote.ToDictionary(p => p.Id);
             var me = AppSettings.UserId;
             var touched = new List<LocalShared>();
@@ -192,7 +194,7 @@ namespace YellowBlackEditor
                 if (push)
                 {
                     var current = SharedProjects.LoadOne(exchange, sp.Id);
-                    if (current != null && current.UpdatedAt != seenAt)
+                    if (current == null || current.UpdatedAt != seenAt)
                     {
                         touched.Add(local);
                         continue;
