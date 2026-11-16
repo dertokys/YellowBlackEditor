@@ -111,6 +111,8 @@
                             <TextBlock x:Name="BellCount" FontSize="10" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </Grid>
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE7B8;" FontSize="16" Width="36" Height="36" Margin="4,0,0,0" Click="BaseTransfer_Click"
+                            ToolTip="Перенос базы: выгрузить на рабочий стол, чтобы взять с собой, или загрузить выгрузку с другого компьютера"/>
                     <Button Style="{DynamicResource IconButton}" Content="&#xE8DA;" FontSize="16" Width="36" Height="36" Margin="4,0,0,0" Click="ChooseWorkspace_Click" ToolTip="Рабочая папка с заметками"/>
                     <Button Style="{DynamicResource IconButton}" Content="&#xE713;" FontSize="16" Width="36" Height="36" Margin="4,0,0,0" Click="OpenSettings_Click" ToolTip="Настройки"/>
                 </StackPanel>
