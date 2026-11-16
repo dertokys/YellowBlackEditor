@@ -76,6 +76,7 @@ namespace YellowBlackEditor
                 var menu = new WF.ContextMenuStrip();
                 menu.Items.Add("Открыть", null, (_, _) => BringToFront());
                 menu.Items.Add("Напоминания", null, (_, _) => BringToFrontAndShowReminders());
+                menu.Items.Add("Быстрый поиск" + (_quickSearchHotkey.Length > 0 ? "   " + _quickSearchHotkey : ""), null, (_, _) => ShowQuickSearch());
                 menu.Items.Add(new WF.ToolStripSeparator());
                 menu.Items.Add("Выход", null, (_, _) => ExitApp());
                 _tray.ContextMenuStrip = menu;

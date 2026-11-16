@@ -20,7 +20,7 @@ namespace YellowBlackEditor.ViewModels
         public string Hint { get => _hint; set { if (_hint == value) return; _hint = value; OnPropertyChanged(); } }
         public NodeViewModel? Target { get; set; }
         public int ProjectIndex { get; set; }
-        public bool IsVirtual => Type is NodeType.ProjectGroup or NodeType.Project or NodeType.SharedGroup or NodeType.SharedProject or NodeType.Today;
+        public bool IsVirtual => Type is NodeType.ProjectGroup or NodeType.Project or NodeType.SharedGroup or NodeType.SharedProject or NodeType.Today or NodeType.Helpdesk;
         public NodeType Type { get; set; }
         public NodeViewModel? Parent { get; set; }
         public ObservableCollection<NodeViewModel> Children { get; } = new();
@@ -40,6 +40,7 @@ namespace YellowBlackEditor.ViewModels
             NodeType.Project => "",
             NodeType.Today => "",
             NodeType.SharedGroup => "\uE716",
+            NodeType.Helpdesk => "\uE8F2",
             NodeType.SharedProject => "\uE72D",
             _ => ""
         };

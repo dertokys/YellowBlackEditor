@@ -37,7 +37,7 @@ namespace YellowBlackEditor
 
         private int VirtualIndex(NodeViewModel group)
         {
-            var order = new[] { _todayNode, _projectsGroup, _sharedGroup };
+            var order = new[] { _todayNode, _helpdeskNode, _projectsGroup, _sharedGroup };
             var i = 0;
             foreach (var g in order)
             {

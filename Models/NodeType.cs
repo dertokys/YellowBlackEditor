@@ -10,6 +10,7 @@ namespace YellowBlackEditor.Models
         Project,
         SharedGroup,
         SharedProject,
-        Today
+        Today,
+        Helpdesk
     }
 }

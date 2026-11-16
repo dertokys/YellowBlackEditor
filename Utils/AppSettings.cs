@@ -20,6 +20,7 @@ namespace YellowBlackEditor.Utils
         public List<string> SeenSubAlerts { get; set; } = new();
         public string LastBackup { get; set; } = "";
         public string UpdateAttemptVersion { get; set; } = "";
+        public string HelpdeskUrl { get; set; } = "https://support.itfirm.ru";
 
         public static string UserId => Environment.MachineName + "\\" + Environment.UserName;
         public static string MachineName => Environment.MachineName;

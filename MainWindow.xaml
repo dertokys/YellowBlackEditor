@@ -280,6 +280,13 @@
                                 <TextBlock x:Name="NoteReminderText" Text="Напомнить" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <Button x:Name="ClientTicketsBtn" Style="{DynamicResource TextButton}" Height="34" Margin="4,0,0,0" Visibility="Collapsed"
+                                Click="ClientTickets_Click" ToolTip="Найти заявки этого клиента в системе заявок">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE8F2;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                <TextBlock Text="Заявки" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <Border x:Name="PresenceBadge" Visibility="Collapsed" CornerRadius="10" Padding="10,3" Margin="10,0,0,4" VerticalAlignment="Center"
                                 Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                             <StackPanel Orientation="Horizontal">
@@ -321,6 +328,7 @@
                 <views:ClientCardView x:Name="ClientView" Grid.Row="1" Visibility="Collapsed"/>
                 <views:SharedProjectView x:Name="SharedView" Grid.Row="1" Visibility="Collapsed"/>
                 <views:TodayView x:Name="TodayPanel" Grid.Row="1" Visibility="Collapsed"/>
+                <views:HelpdeskView x:Name="HelpdeskPanel" Grid.Row="1" Visibility="Collapsed"/>
             </Grid>
         </Grid>
     </DockPanel>

@@ -105,8 +105,10 @@ namespace YellowBlackEditor
             ClientView.OpenNoteRequested += n => SelectNode(n);
             InitShared();
             InitToday();
+            InitHelpdesk();
             InitUpdates();
             InitCare();
+            InitQuickSearch();
 
             _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
             _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); SaveAll(); };
@@ -280,6 +282,8 @@ namespace YellowBlackEditor
                 ApplyFontSizes();
                 _appSettings = AppSettings.Load();
                 ApplySyncSettings();
+                EnsureHelpdeskNode();
+                UpdateTicketsButton();
                 Status("Настройки сохранены");
             }
         }
@@ -343,9 +347,11 @@ namespace YellowBlackEditor
             _projectsGroup.IsSelected = false;
             _sharedGroup.IsSelected = false;
             _todayNode.IsSelected = false;
+            _helpdeskNode.IsSelected = false;
             _contentCache.Clear();
             if (!Directory.Exists(_workspacePath)) return;
             EnsureTodayNode();
+            EnsureHelpdeskNode();
 
             foreach (var sectionDir in Directory.GetDirectories(_workspacePath).OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
             {
@@ -564,6 +570,7 @@ namespace YellowBlackEditor
             DetachCurrentClient();
             HideShared();
             HideToday();
+            HideHelpdesk();
             _isDirty = false;
             _clientDirty = false;
 
@@ -571,11 +578,13 @@ namespace YellowBlackEditor
             else if (node?.Type == NodeType.Client) LoadClient(node);
             else if (node?.Type == NodeType.SharedProject) ShowShared(node);
             else if (node?.Type == NodeType.Today) ShowToday();
+            else if (node?.Type == NodeType.Helpdesk) ShowHelpdesk();
             else ShowEmpty(node);
 
             UpdateTitle();
             UpdateNoteReminderButton();
             UpdateTimeButton();
+            UpdateTicketsButton();
             SetPresenceClient(_currentClientNode?.Name ?? (_currentDocNode != null ? TimeStore.Describe(_workspacePath, _currentDocNode.FullPath).Client : ""));
             UpdatePresenceBadge();
             if (_currentClientNode != null) ClientView.SetTeamTime(OthersMinutes(_currentClientNode.Name));
