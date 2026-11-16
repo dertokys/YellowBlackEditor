@@ -7,11 +7,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\App.ico</ApplicationIcon>
-    <Version>1.6.3</Version>
+    <Version>1.6.4</Version>
     <Product>Yellow Black Notes</Product>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\App.ico" />
+    <EmbeddedResource Include="Assets\helpdesk.js" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />

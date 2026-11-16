@@ -8,6 +8,8 @@ namespace YellowBlackEditor.Utils
     {
         public static ThemeSettings Current { get; private set; } = new();
 
+        public static event Action? Changed;
+
         public static void LoadAndApply(string path)
         {
             try
@@ -64,6 +66,8 @@ namespace YellowBlackEditor.Utils
 
             foreach (System.Windows.Window w in System.Windows.Application.Current.Windows)
                 DarkTitleBar.Apply(w);
+
+            Changed?.Invoke();
         }
 
         private static string Mix(string fgHex, string bgHex, double ratio)

@@ -1,10 +1,12 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using YellowBlackEditor.Utils;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -19,6 +21,9 @@ namespace YellowBlackEditor.Views
         private string _baseUrl = "";
         private string? _pending;
         private Action? _messageAction;
+        private string? _scriptId;
+        private int _scriptVersion;
+        private static string? _script;
 
         public event Action<Exception>? Failed;
 
@@ -53,6 +58,11 @@ namespace YellowBlackEditor.Views
             var target = route == null ? (changed || _web?.CoreWebView2 == null ? baseUrl + "/" : null) : baseUrl + "/#" + route;
             if (_web?.CoreWebView2 != null)
             {
+                if (changed)
+                {
+                    try { await InstallScriptAsync(_web.CoreWebView2); }
+                    catch (Exception ex) { Failed?.Invoke(ex); }
+                }
                 if (target != null) Navigate(target);
                 return;
             }
@@ -93,6 +103,8 @@ namespace YellowBlackEditor.Views
             await _web.EnsureCoreWebView2Async(env);
             var core = _web.CoreWebView2;
             core.Settings.IsStatusBarEnabled = false;
+            await InstallScriptAsync(core);
+            ThemeManager.Changed += OnThemeChanged;
             core.NewWindowRequested += (_, e) =>
             {
                 e.Handled = true;
@@ -118,8 +130,74 @@ namespace YellowBlackEditor.Views
             };
         }
 
+        private static string Script => _script ??= LoadScript();
+
+        private static string LoadScript()
+        {
+            using var stream = typeof(HelpdeskView).Assembly.GetManifestResourceStream("YellowBlackEditor.Assets.helpdesk.js");
+            if (stream == null) return "";
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+
+        private static string ThemeJson()
+        {
+            static string C(string key) =>
+                System.Windows.Application.Current.Resources[key] is System.Windows.Media.SolidColorBrush b ? $"#{b.Color.R:X2}{b.Color.G:X2}{b.Color.B:X2}" : "#808080";
+            return JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["light"] = ThemeManager.Current.IsLight,
+                ["bg"] = C("BgBrush"),
+                ["panel"] = C("PanelBrush"),
+                ["panel2"] = C("PanelBrush2"),
+                ["border"] = C("BorderBrush1"),
+                ["text"] = C("TextBrush"),
+                ["sub"] = C("SubTextBrush"),
+                ["accent"] = C("AccentBrush"),
+                ["accentLight"] = C("AccentBrushLight"),
+                ["accentText"] = C("AccentTextBrush"),
+                ["accentSoft"] = C("AccentSoftBrush"),
+                ["hover"] = C("SurfaceHoverBrush"),
+                ["field"] = C("FieldBrush"),
+                ["fieldBorder"] = C("FieldBorderBrush"),
+                ["danger"] = C("DangerBrush"),
+            });
+        }
+
+        private async Task InstallScriptAsync(CoreWebView2 core)
+        {
+            if (Script.Length == 0) return;
+            var version = ++_scriptVersion;
+            var old = _scriptId;
+            _scriptId = null;
+            if (old != null) core.RemoveScriptToExecuteOnDocumentCreated(old);
+            var host = Uri.TryCreate(_baseUrl, UriKind.Absolute, out var u) ? u.Authority : "";
+            var id = await core.AddScriptToExecuteOnDocumentCreatedAsync(
+                "window.__ybnHost = " + JsonSerializer.Serialize(host) + ";\nwindow.__ybnTheme = " + ThemeJson() + ";\n" + Script);
+            if (version != _scriptVersion)
+            {
+                core.RemoveScriptToExecuteOnDocumentCreated(id);
+                return;
+            }
+            _scriptId = id;
+        }
+
+        private async void OnThemeChanged()
+        {
+            try
+            {
+                var core = _web?.CoreWebView2;
+                if (core == null) return;
+                await InstallScriptAsync(core);
+                await core.ExecuteScriptAsync("window.__ybnApplyTheme && window.__ybnApplyTheme(" + ThemeJson() + ")");
+            }
+            catch { }
+        }
+
         private void ResetWeb()
         {
+            ThemeManager.Changed -= OnThemeChanged;
+            _scriptId = null;
             if (_web == null) return;
             Host.Children.Remove(_web);
             _web.Dispose();
@@ -181,7 +259,7 @@ namespace YellowBlackEditor.Views
 
         private void Home_Click(object sender, RoutedEventArgs e)
         {
-            if (_web?.CoreWebView2 != null) Navigate(_baseUrl + "/#dashboard");
+            if (_web?.CoreWebView2 != null) Navigate(_baseUrl + "/#ticket/view");
             else Open(_baseUrl);
         }
 
