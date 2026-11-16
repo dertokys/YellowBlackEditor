@@ -1,6 +1,7 @@
 (() => {
   if (window.top !== window || window.__ybnInit) return;
   if (window.__ybnHost && location.host.toLowerCase() !== String(window.__ybnHost).toLowerCase()) return;
+  if (location.pathname !== '/' && location.pathname !== '') return;
   window.__ybnInit = true;
 
   const MODE_KEY = 'ybn.helpdesk.mode';
@@ -108,6 +109,13 @@ body, input, textarea, select, button, .btn, .form-control { font-family: ${FONT
 #navigation:not(.is-not-collapsed) .tasks{width:100% !important;min-width:0 !important}
 #navigation:not(.is-not-collapsed) .tasks .nav-tab{width:100% !important;min-width:0 !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;gap:2px;padding:6px 0 !important;height:auto !important;min-height:46px}
 #navigation:not(.is-not-collapsed) .tasks .nav-tab-icon{margin:0 !important}
+#navigation:not(.is-not-collapsed) .tasks .nav-tab{position:relative !important}
+#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close{display:flex !important;position:absolute !important;top:2px;right:2px;width:18px;height:18px;align-items:center;justify-content:center;margin:0 !important}
+#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close-inner{width:18px !important;height:18px !important;border-radius:50% !important;display:flex !important;align-items:center;justify-content:center;background:rgba(0,0,0,.35) !important}
+#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close .icon{opacity:1 !important;fill:#fff !important;width:9px;height:9px}
+#app .tabsSidebar .sidebar[data-tab="template"],#app .tabsSidebar-tab[data-tab="template"]{display:none !important}
+#app .tabsSidebar:not(:has(.tabsSidebar-tab:not([data-tab="template"]))){display:none !important}
+#app .type-tabs .tab[data-type="phone-out"],#app .type-tabs .tab[data-type="email-out"]{display:none !important}
 #navigation:not(.is-not-collapsed) .tasks .nav-tab[data-short]::after{content:attr(data-short);font-size:10px;line-height:12px;color:var(--ybn-sub)}
 #navigation:not(.is-not-collapsed) .tasks .nav-tab.is-active[data-short]::after{color:var(--ybn-on-accent);font-weight:600}
 #navigation .icon-plus{fill:var(--ybn-accent) !important}
@@ -216,6 +224,21 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
     io = new IntersectionObserver(es => {
       for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); need(e.target); }
     }, { root: list, rootMargin: '400px' });
+    const kbOpen = e => {
+      if (!(e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey)))) return;
+      const a = e.target.closest && e.target.closest('a[href^="#knowledge_base/"]');
+      if (!a) return;
+      const m = a.getAttribute('href').match(/^#knowledge_base\/\d+\/locale\/([^/]+)\/(answer|category)\/(\d+)/);
+      if (!m) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.type === 'mousedown') return;
+      const kind = m[2] === 'answer' ? 'KnowledgeBaseAnswer' : 'KnowledgeBaseCategory';
+      window.open('/api/v1/knowledge_bases/preview/' + kind + '/' + m[3] + '/' + m[1], '_blank');
+    };
+    document.addEventListener('mousedown', kbOpen, true);
+    document.addEventListener('click', kbOpen, true);
+    document.addEventListener('auxclick', kbOpen, true);
     window.addEventListener('resize', tick);
     window.addEventListener('hashchange', tick);
     setInterval(tick, 400);
@@ -269,6 +292,9 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
       const short = m ? m[1].slice(-5) : name.slice(0, 5);
       if (t.dataset.short !== short) t.dataset.short = short;
     }
+    const typeTabs = document.querySelector('#app > .content.active .type-tabs');
+    const phoneIn = typeTabs && typeTabs.querySelector('[data-type="phone-in"]');
+    if (phoneIn && !phoneIn.classList.contains('active')) phoneIn.click();
     const h = location.hash;
     if ((h === '' || h === '#' || h.startsWith('#dashboard')) && document.querySelector('#navigation .js-overviewsMenuItem')) {
       location.replace('#ticket/view');

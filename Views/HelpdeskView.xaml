@@ -5,6 +5,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid Margin="20,12,20,8">
@@ -18,6 +19,8 @@
                 <Button x:Name="ForwardBtn" Style="{DynamicResource IconButton}" Content="&#xE72A;" ToolTip="Вперёд" Click="Forward_Click" IsEnabled="False" Margin="2,0,0,0"/>
                 <Button Style="{DynamicResource IconButton}" Content="&#xE72C;" ToolTip="Обновить (F5)" Click="Reload_Click" Margin="2,0,0,0"/>
                 <Button Style="{DynamicResource IconButton}" Content="&#xE80F;" ToolTip="Главная страница заявок" Click="Home_Click" Margin="2,0,0,0"/>
+                <Button Style="{DynamicResource IconButton}" Content="&#xE8F1;" Click="KnowledgeTab_Click" Margin="2,0,0,0"
+                        ToolTip="База знаний в новой вкладке. Статью можно открыть во вкладке нажатием с Ctrl или колёсиком мыши"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                 <TextBlock Text="Заявки" Foreground="{DynamicResource SubTextBrush}" FontSize="12"/>
@@ -30,7 +33,11 @@
                 </StackPanel>
             </Button>
         </Grid>
-        <Border Grid.Row="1" Margin="12,0,12,12" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush1}" ClipToBounds="True">
+        <ScrollViewer x:Name="TabsScroll" Grid.Row="1" Margin="12,0,12,8" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                      Visibility="Collapsed">
+            <StackPanel x:Name="TabsPanel" Orientation="Horizontal"/>
+        </ScrollViewer>
+        <Border Grid.Row="2" Margin="12,0,12,12" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush1}" ClipToBounds="True">
             <Grid x:Name="Host">
                 <StackPanel x:Name="MessagePanel" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="460">
                     <TextBlock x:Name="MessageText" Text="Загружаю заявки…" Foreground="{DynamicResource SubTextBrush}" FontSize="15"
