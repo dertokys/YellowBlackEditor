@@ -57,7 +57,7 @@ body, input, textarea, select, button, .btn, .form-control { font-family: ${FONT
   }
 
   const CARD_CSS = `
-#ybn-cards{position:fixed;z-index:20;display:none;flex-direction:column;background:var(--ybn-bg);color:var(--ybn-text);font:14px/1.45 ${FONT};box-sizing:border-box}
+#ybn-cards{position:fixed;z-index:20;display:none;flex-direction:row;background:var(--ybn-bg);color:var(--ybn-text);font:14px/1.45 ${FONT};box-sizing:border-box}
 #ybn-cards *{box-sizing:border-box}
 #ybn-cards.on{display:flex}
 #ybn-cards .ybn-head{display:flex;align-items:center;gap:10px 14px;padding:18px clamp(12px,3vw,24px) 12px;flex-wrap:wrap;border-bottom:1px solid var(--ybn-border)}
@@ -121,13 +121,31 @@ body, input, textarea, select, button, .btn, .form-control { font-family: ${FONT
 #navigation .icon-plus{fill:var(--ybn-accent) !important}
 #app .internal-border{background:none !important;padding:0 !important;border-left:3px solid var(--ybn-accent) !important;border-radius:6px !important}
 html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !important}
-#ybn-cards .ybn-tabs{display:flex;gap:6px;padding:14px clamp(12px,3vw,24px) 0;overflow-x:auto;flex:none;scrollbar-width:thin}
+#navigation .js-overviewsMenuItem{display:none !important}
+#ybn-nav-views{display:flex;flex-direction:column;padding:4px 0}
+#ybn-nav-views .ybn-view{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px 9px 18px;color:var(--ybn-text);text-decoration:none;font:14px/1.3 ${FONT};cursor:pointer}
+#ybn-nav-views .ybn-view:hover{background:var(--ybn-hover)}
+#ybn-nav-views .ybn-view-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ybn-nav-views .ybn-view-count{flex:none;font-size:12px;font-weight:600;color:var(--ybn-sub)}
+#ybn-nav-views .ybn-view.is-active{background:var(--ybn-accent);color:var(--ybn-on-accent);font-weight:600}
+#ybn-nav-views .ybn-view.is-active .ybn-view-count{color:var(--ybn-on-accent)}
+#navigation.ybn-narrow #ybn-nav-views .ybn-view{flex-direction:column;justify-content:center;gap:1px;padding:6px 2px;text-align:center}
+#navigation.ybn-narrow #ybn-nav-views .ybn-view-name{display:none}
+#navigation.ybn-narrow #ybn-nav-views .ybn-view::before{content:attr(data-short);font-size:11px;font-weight:600}
+#navigation.ybn-narrow #ybn-nav-views .ybn-view-count{font-size:10px}
+#ybn-cards .ybn-body{flex:1;min-width:0;display:flex;flex-direction:column}
+#ybn-cards .ybn-tabs{flex:none;width:236px;display:flex;flex-direction:column;gap:2px;padding:14px 8px;overflow-y:auto;border-right:1px solid var(--ybn-border);background:var(--ybn-panel2);scrollbar-width:thin}
 #ybn-cards .ybn-tabs:empty{display:none}
-#ybn-cards .ybn-tab{flex:none;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--ybn-border);background:var(--ybn-panel);color:var(--ybn-text);font:inherit;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px}
-#ybn-cards .ybn-tab:hover{border-color:var(--ybn-accent)}
-#ybn-cards .ybn-tab.on{background:var(--ybn-accent);border-color:var(--ybn-accent);color:var(--ybn-on-accent);font-weight:600}
-#ybn-cards .ybn-tab b{font-weight:600;font-size:12px;color:var(--ybn-sub)}
-#ybn-cards .ybn-tab.on b{color:var(--ybn-on-accent)}`;
+#ybn-cards .ybn-tab{flex:none;min-height:38px;padding:8px 12px;border:0;border-radius:8px;background:transparent;color:var(--ybn-text);font:inherit;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#ybn-cards .ybn-tab span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ybn-cards .ybn-tab:hover{background:var(--ybn-hover)}
+#ybn-cards .ybn-tab.on{background:var(--ybn-accent);color:var(--ybn-on-accent);font-weight:600}
+#ybn-cards .ybn-tab b{flex:none;font-weight:600;font-size:12px;color:var(--ybn-sub)}
+#ybn-cards .ybn-tab.on b{color:var(--ybn-on-accent)}
+#ybn-cards.narrow{flex-direction:column}
+#ybn-cards.narrow .ybn-tabs{width:auto;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;border-right:0;padding:14px clamp(12px,3vw,24px) 0;background:none}
+#ybn-cards.narrow .ybn-tab{min-height:32px;padding:0 12px;border:1px solid var(--ybn-border);background:var(--ybn-panel);white-space:nowrap}
+#ybn-cards.narrow .ybn-tab.on{background:var(--ybn-accent);border-color:var(--ybn-accent)}`;
 
   function applyTheme(t) {
     if (!t) return;
@@ -214,7 +232,9 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
     tabsEl = el('div', 'ybn-tabs');
     head = el('div', 'ybn-head');
     list = el('div', 'ybn-list');
-    root.append(tabsEl, head, list);
+    const body = el('div', 'ybn-body');
+    body.append(head, list);
+    root.append(tabsEl, body);
     toggle = el('button', null, 'Карточки');
     toggle.id = 'ybn-toggle';
     toggle.type = 'button';
@@ -279,7 +299,11 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
   function place(node, box) {
     node.style.left = box.left + 'px';
     node.style.top = box.top + 'px';
-    if (node === root) { node.style.width = box.width + 'px'; node.style.height = box.height + 'px'; }
+    if (node === root) {
+      node.style.width = box.width + 'px';
+      node.style.height = box.height + 'px';
+      node.classList.toggle('narrow', box.width < 820);
+    }
   }
 
   function tick() {
@@ -301,6 +325,8 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
     }
     const nav = document.getElementById('navigation');
     if (nav) nav.classList.toggle('ybn-narrow', nav.getBoundingClientRect().width < 100);
+    renderTabs();
+    if (!spaOverviews() && Date.now() - st.ovAt > 15000 && document.querySelector('#navigation .menu.js-menu')) loadOverviews();
     const typeTabs = document.querySelector('#app > .content.active .type-tabs');
     const phoneIn = typeTabs && typeTabs.querySelector('[data-type="phone-in"]');
     if (phoneIn && !phoneIn.classList.contains('active')) phoneIn.click();
@@ -335,9 +361,9 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
       if (r.key !== st.searchValue) { st.searchValue = r.key; st.searchSince = Date.now(); }
       if (st.key.startsWith('search:') && key !== st.key && Date.now() - st.searchSince < 600) return;
     }
-    if (r.kind === 'view' && Date.now() - st.ovAt > 15000 && document.visibilityState === 'visible') loadOverviews();
+    if (r.kind === 'view' && !spaOverviews() && Date.now() - st.ovAt > 15000 && document.visibilityState === 'visible') loadOverviews();
     if (key !== st.key) load(r, key, false);
-    else if (!st.loading && Date.now() - st.loadedAt > 30000 && document.visibilityState === 'visible') load(r, key, true);
+    else if (!st.loading && Date.now() - st.loadedAt > (st.source === 'spa' ? 5000 : 30000) && document.visibilityState === 'visible') load(r, key, true);
   }
 
   async function loadOverviews() {
@@ -357,19 +383,98 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
     } catch (e) { }
   }
 
+  function shortName(name) {
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0].slice(0, 4);
+    const letters = words.filter(w => w.length > 2 || w === w.toUpperCase()).map(w => w === w.toUpperCase() && w.length > 1 ? w : w[0].toUpperCase());
+    return letters.join('').slice(0, 4) || name.slice(0, 3);
+  }
+
+  function spaOverviews() {
+    try {
+      const list = window.App && App.OverviewIndexCollection && App.OverviewIndexCollection.get();
+      if (Array.isArray(list) && list.length) return list.map(o => ({ name: o.name, link: o.link, count: o.count }));
+    } catch (e) { }
+    return null;
+  }
+
   function renderTabs() {
-    tabsEl.replaceChildren();
-    const r = route();
-    if (!r || r.kind !== 'view') return;
-    for (const o of st.overviews) {
-      const b = el('button', 'ybn-tab' + (o.link === r.key ? ' on' : ''));
-      b.type = 'button';
-      b.append(document.createTextNode(tr(o.name)), el('b', null, String(o.count)));
-      b.addEventListener('click', () => { location.hash = '#ticket/view/' + o.link; });
-      tabsEl.append(b);
+    const spa = spaOverviews();
+    if (spa) {
+      st.overviews = spa;
+      const sig = spa.map(o => o.link + ':' + o.count).join(',');
+      if (st.ovSig && sig !== st.ovSig && st.key.startsWith('view:') && !st.loading) {
+        const cur = route();
+        if (cur && cur.kind === 'view') load(cur, st.key, true);
+      }
+      st.ovSig = sig;
     }
-    const on = tabsEl.querySelector('.on');
-    if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const menu = document.querySelector('#navigation .menu.js-menu');
+    if (!menu || !st.overviews.length) return;
+    let box = document.getElementById('ybn-nav-views');
+    if (!box || box.parentElement !== menu) {
+      if (box) box.remove();
+      box = el('div');
+      box.id = 'ybn-nav-views';
+      menu.insertBefore(box, menu.querySelector('.js-knowledge-baseMenuItem'));
+    }
+    const r = route();
+    const active = r && r.kind === 'view' ? r.key : '';
+    const sig = active + '|' + st.overviews.map(o => o.link + ':' + o.count).join(',');
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    box.replaceChildren();
+    for (const o of st.overviews) {
+      const name = tr(o.name);
+      const a = el('a', 'ybn-view' + (o.link === active ? ' is-active' : ''));
+      a.href = '#ticket/view/' + o.link;
+      a.title = name + ': ' + o.count;
+      a.dataset.short = shortName(name);
+      a.append(el('span', 'ybn-view-name', name), el('span', 'ybn-view-count', String(o.count)));
+      box.append(a);
+    }
+  }
+
+  function spaViewNow(link) {
+    try {
+      if (!window.App || !App.OverviewListCollection || !App.Ticket) return null;
+      const d = App.OverviewListCollection.get(link);
+      if (!d || !Array.isArray(d.tickets)) return null;
+      const T = {}, O = {}, U = {}, G = {};
+      let missing = 0;
+      const find = (model, id) => { try { return id && model && model.findNative ? model.findNative(id) : null; } catch (e) { return null; } };
+      for (const x of d.tickets) {
+        const t = find(App.Ticket, x.id);
+        if (!t) { missing++; continue; }
+        T[x.id] = t;
+        const o = find(App.Organization, t.organization_id);
+        if (o) O[t.organization_id] = o;
+        for (const uid of [t.customer_id, t.owner_id]) {
+          const u = find(App.User, uid);
+          if (u) U[uid] = u;
+        }
+        const g = find(App.Group, t.group_id);
+        if (g) G[t.group_id] = g;
+      }
+      if (d.tickets.length && missing > d.tickets.length / 5) return null;
+      return {
+        ids: d.tickets.map(x => x.id),
+        assets: { Ticket: T, Organization: O, User: U, Group: G },
+        title: tr((d.overview && d.overview.name) || 'Заявки'),
+        total: d.count != null ? d.count : d.tickets.length
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function spaView(link, waitMs) {
+    const until = Date.now() + waitMs;
+    for (;;) {
+      const v = spaViewNow(link);
+      if (v || Date.now() >= until) return v;
+      await new Promise(res => setTimeout(res, 300));
+    }
   }
 
   async function ensureStates() {
@@ -395,12 +500,21 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
       await ensureStates();
       let ids, assets, title, total;
       if (r.kind === 'view') {
-        const d = await api('ticket_overviews?view=' + encodeURIComponent(r.key));
-        ids = (d.index.tickets || []).map(t => t.id);
-        assets = d.assets || {};
-        title = tr((d.index.overview && d.index.overview.name) || 'Заявки');
-        total = d.index.count != null ? d.index.count : ids.length;
+        const spa = await spaView(r.key, silent ? 0 : 6000);
+        if (seq !== st.seq) return;
+        if (spa) {
+          ({ ids, assets, title, total } = spa);
+          st.source = 'spa';
+        } else {
+          const d = await api('ticket_overviews?view=' + encodeURIComponent(r.key));
+          ids = (d.index.tickets || []).map(t => t.id);
+          assets = d.assets || {};
+          title = tr((d.index.overview && d.index.overview.name) || 'Заявки');
+          total = d.index.count != null ? d.index.count : ids.length;
+          st.source = 'api';
+        }
       } else {
+        st.source = 'api';
         const d = await api('tickets/search?query=' + encodeURIComponent(r.key) + '&limit=200&full=true');
         if (Array.isArray(d)) {
           assets = { Ticket: {} };
