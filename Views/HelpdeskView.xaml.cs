@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using YellowBlackEditor.Models;
 using YellowBlackEditor.Utils;
 using Button = System.Windows.Controls.Button;
 using Cursors = System.Windows.Input.Cursors;
@@ -44,11 +45,13 @@ namespace YellowBlackEditor.Views
         private WebView2? Active => _current?.Web ?? _web;
 
         public event Action<Exception>? Failed;
+        public event Action<ChatLink>? ShareRequested;
 
         public HelpdeskView()
         {
             InitializeComponent();
             PreviewKeyDown += OnPreviewKeyDown;
+            WebViewHost.LiveCore = () => _web?.CoreWebView2;
         }
 
         public static string Normalize(string url)
@@ -113,9 +116,7 @@ namespace YellowBlackEditor.Views
         private async Task InitAsync()
         {
             ShowMessage("Загружаю заявки…", null, null);
-            var data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YellowBlackNotes", "WebView2");
-            Directory.CreateDirectory(data);
-            var env = await CoreWebView2Environment.CreateAsync(null, data);
+            var env = await WebViewHost.EnvironmentAsync();
             _env = env;
             _web = new WebView2 { Visibility = Visibility.Hidden };
             Host.Children.Add(_web);
@@ -381,6 +382,68 @@ namespace YellowBlackEditor.Views
             var core = Active?.CoreWebView2;
             BackBtn.IsEnabled = core?.CanGoBack == true;
             ForwardBtn.IsEnabled = core?.CanGoForward == true;
+        }
+
+        public async void OpenLink(string baseUrl, ChatLink link)
+        {
+            if (_web?.CoreWebView2 == null)
+            {
+                Open(baseUrl);
+                if (_init == null) return;
+                try { await _init; }
+                catch { return; }
+            }
+            if (_web?.CoreWebView2 == null) return;
+            if (link.Kind == "kb" || !IsApp(link.Url)) await OpenTabAsync(link.Url);
+            else ShowInMain(link.Url);
+        }
+
+        private async Task<ChatLink?> CurrentLinkAsync()
+        {
+            var core = Active?.CoreWebView2;
+            if (core == null || !Uri.TryCreate(core.Source, UriKind.Absolute, out var uri)) return null;
+            var title = core.DocumentTitle ?? "";
+            var dash = title.IndexOf(" - ", StringComparison.Ordinal);
+            var shortTitle = dash > 0 ? title[(dash + 3)..].Trim() : title.Trim();
+            if (_current is { Main: false })
+                return new ChatLink { Kind = "kb", Url = uri.GetLeftPart(UriPartial.Path), Title = shortTitle.Length > 0 ? shortTitle : "Статья базы знаний" };
+            var hash = Uri.UnescapeDataString(uri.Fragment.TrimStart('#'));
+            var ticket = System.Text.RegularExpressions.Regex.Match(hash, @"^ticket/zoom/(\d+)");
+            if (ticket.Success)
+            {
+                var headline = "";
+                try
+                {
+                    var json = await core.ExecuteScriptAsync(
+                        "(() => { const b = document.querySelector('#app > .content.active .ticket-article-item .textBubble-content, #app > .content.active .ticket-article-item .richtext-content'); return b ? b.innerText : ''; })()");
+                    headline = ZammadApi.RequestText(JsonSerializer.Deserialize<string>(json) ?? "");
+                }
+                catch { }
+                var number = System.Text.RegularExpressions.Regex.Match(title, @"#(\d+)").Groups[1].Value;
+                var name = headline.Length > 0 ? headline : shortTitle;
+                return new ChatLink
+                {
+                    Kind = "ticket",
+                    Url = _baseUrl + "/#ticket/zoom/" + ticket.Groups[1].Value,
+                    Title = (number.Length > 0 ? "Заявка №" + number + ": " : "Заявка: ") + name
+                };
+            }
+            var kb = System.Text.RegularExpressions.Regex.Match(hash, @"^knowledge_base/\d+/locale/([^/]+)/(answer|category)/(\d+)");
+            if (kb.Success)
+                return new ChatLink
+                {
+                    Kind = "kb",
+                    Url = _baseUrl + "/api/v1/knowledge_bases/preview/" + (kb.Groups[2].Value == "answer" ? "KnowledgeBaseAnswer" : "KnowledgeBaseCategory") +
+                          "/" + kb.Groups[3].Value + "/" + kb.Groups[1].Value,
+                    Title = shortTitle.Length > 0 ? shortTitle : "Статья базы знаний"
+                };
+            return new ChatLink { Kind = "url", Url = uri.ToString(), Title = shortTitle.Length > 0 ? shortTitle : "Страница Zammad" };
+        }
+
+        private async void Share_Click(object sender, RoutedEventArgs e)
+        {
+            var link = await CurrentLinkAsync();
+            if (link != null) ShareRequested?.Invoke(link);
         }
 
         private void KnowledgeTab_Click(object sender, RoutedEventArgs e)

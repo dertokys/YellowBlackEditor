@@ -105,19 +105,19 @@ body, input, textarea, select, button, .btn, .form-control { font-family: ${FONT
 #navigation .tasks .nav-tab .nav-tab-close-inner .icon{fill:var(--ybn-text) !important}
 #navigation .tasks .nav-tab.is-active .nav-tab-close-inner{background:rgba(0,0,0,.12) !important}
 #navigation .tasks .nav-tab.is-active .icon{fill:var(--ybn-on-accent) !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab-name,#navigation:not(.is-not-collapsed) .tasks .nav-tab-close{display:none !important}
-#navigation:not(.is-not-collapsed) .tasks{width:100% !important;min-width:0 !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab{width:100% !important;min-width:0 !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;gap:2px;padding:6px 0 !important;height:auto !important;min-height:46px}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab-icon{margin:0 !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab{position:relative !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close{display:flex !important;position:absolute !important;top:2px;right:2px;width:18px;height:18px;align-items:center;justify-content:center;margin:0 !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close-inner{width:18px !important;height:18px !important;border-radius:50% !important;display:flex !important;align-items:center;justify-content:center;background:rgba(0,0,0,.35) !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab:hover .nav-tab-close .icon{opacity:1 !important;fill:#fff !important;width:9px;height:9px}
+#navigation.ybn-narrow .tasks .nav-tab-name,#navigation.ybn-narrow .tasks .nav-tab-close{display:none !important}
+#navigation.ybn-narrow .tasks{width:100% !important;min-width:0 !important}
+#navigation.ybn-narrow .tasks .nav-tab{width:100% !important;min-width:0 !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;gap:2px;padding:6px 0 !important;height:auto !important;min-height:46px}
+#navigation.ybn-narrow .tasks .nav-tab-icon{margin:0 !important}
+#navigation.ybn-narrow .tasks .nav-tab{position:relative !important}
+#navigation.ybn-narrow .tasks .nav-tab:hover .nav-tab-close{display:flex !important;position:absolute !important;top:2px;right:2px;width:18px;height:18px;align-items:center;justify-content:center;margin:0 !important}
+#navigation.ybn-narrow .tasks .nav-tab:hover .nav-tab-close-inner{width:18px !important;height:18px !important;border-radius:50% !important;display:flex !important;align-items:center;justify-content:center;background:rgba(0,0,0,.35) !important}
+#navigation.ybn-narrow .tasks .nav-tab:hover .nav-tab-close .icon{opacity:1 !important;fill:#fff !important;width:9px;height:9px}
 #app .tabsSidebar .sidebar[data-tab="template"],#app .tabsSidebar-tab[data-tab="template"]{display:none !important}
 #app .tabsSidebar:not(:has(.tabsSidebar-tab:not([data-tab="template"]))){display:none !important}
 #app .type-tabs .tab[data-type="phone-out"],#app .type-tabs .tab[data-type="email-out"]{display:none !important}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab[data-short]::after{content:attr(data-short);font-size:10px;line-height:12px;color:var(--ybn-sub)}
-#navigation:not(.is-not-collapsed) .tasks .nav-tab.is-active[data-short]::after{color:var(--ybn-on-accent);font-weight:600}
+#navigation.ybn-narrow .tasks .nav-tab[data-short]::after{content:attr(data-short);font-size:10px;line-height:12px;color:var(--ybn-sub)}
+#navigation.ybn-narrow .tasks .nav-tab.is-active[data-short]::after{color:var(--ybn-on-accent);font-weight:600}
 #navigation .icon-plus{fill:var(--ybn-accent) !important}
 #app .internal-border{background:none !important;padding:0 !important;border-left:3px solid var(--ybn-accent) !important;border-radius:6px !important}
 html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !important}
@@ -292,6 +292,15 @@ html.ybn-cards-on #content_permanent_TicketOverview > .sidebar{display:none !imp
       const short = m ? m[1].slice(-5) : name.slice(0, 5);
       if (t.dataset.short !== short) t.dataset.short = short;
     }
+    for (const m of document.querySelectorAll('.modal')) {
+      if (m.offsetParent === null && getComputedStyle(m).display === 'none') continue;
+      const text = (m.textContent || '').toLowerCase();
+      if (!/новый сеанс|new session/.test(text)) continue;
+      const go = m.querySelector('button[type="submit"], .js-submit');
+      if (go && !go.dataset.ybnClicked) { go.dataset.ybnClicked = '1'; go.click(); }
+    }
+    const nav = document.getElementById('navigation');
+    if (nav) nav.classList.toggle('ybn-narrow', nav.getBoundingClientRect().width < 100);
     const typeTabs = document.querySelector('#app > .content.active .type-tabs');
     const phoneIn = typeTabs && typeTabs.querySelector('[data-type="phone-in"]');
     if (phoneIn && !phoneIn.classList.contains('active')) phoneIn.click();

@@ -21,6 +21,7 @@ namespace YellowBlackEditor.Utils
         public string LastBackup { get; set; } = "";
         public string UpdateAttemptVersion { get; set; } = "";
         public string HelpdeskUrl { get; set; } = "https://support.itfirm.ru";
+        public bool ReportZammad { get; set; } = true;
 
         public static string UserId => Environment.MachineName + "\\" + Environment.UserName;
         public static string MachineName => Environment.MachineName;

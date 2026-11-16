@@ -9,7 +9,8 @@ namespace YellowBlackEditor.Views
 {
     public partial class TimeReportWindow : Window
     {
-        public sealed record Row(string Left, string Main, string Comment, Visibility CommentVisibility, string MinutesText);
+        public sealed record Row(string Left, string Main, string Comment, Visibility CommentVisibility, string MinutesText,
+            Visibility TagVisibility, int Ticket, System.Windows.Input.Cursor? Cursor, string? Hint);
         public sealed record Group(string Title, string TotalText, List<Row> Rows);
 
         private static readonly CultureInfo Ru = CultureInfo.GetCultureInfo("ru-RU");
@@ -17,15 +18,34 @@ namespace YellowBlackEditor.Views
         private DateTime _start;
         private bool _month;
         private bool _byClient;
+        private readonly Func<DateTime, DateTime, CancellationToken, Task<List<TimeRow>>>? _zammad;
+        private readonly Action<int>? _openTicket;
+        private readonly Dictionary<(DateTime, DateTime), List<TimeRow>> _zammadRows = new();
+        private readonly HashSet<(DateTime, DateTime)> _zammadFailed = new();
+        private (DateTime, DateTime)? _zammadLoading;
+        private CancellationTokenSource? _zammadCts;
+        private string _zammadNote = "";
 
-        public TimeReportWindow(List<TimeRow> all)
+        public bool ZammadOn => ZammadBtn.IsChecked == true;
+
+        public TimeReportWindow(List<TimeRow> all, Func<DateTime, DateTime, CancellationToken, Task<List<TimeRow>>>? zammad = null,
+            Action<int>? openTicket = null, bool zammadOn = true)
         {
             InitializeComponent();
             SourceInitialized += (_, _) => DarkTitleBar.Apply(this);
+            Closed += (_, _) => _zammadCts?.Cancel();
             _all = all;
+            _zammad = zammad;
+            _openTicket = openTicket;
+            ZammadCard.Visibility = zammad == null ? Visibility.Collapsed : Visibility.Visible;
+            ZammadBtn.IsChecked = zammad != null && zammadOn;
             _start = WeekStart(DateTime.Today);
             Refresh();
         }
+
+        private bool UseZammad => _zammad != null && ZammadBtn.IsChecked == true;
+
+        private (DateTime, DateTime) Key => (_start, End);
 
         private static DateTime WeekStart(DateTime d) => d.Date.AddDays(-(((int)d.DayOfWeek + 6) % 7));
 
@@ -33,8 +53,12 @@ namespace YellowBlackEditor.Views
 
         private static string ClientTitle(TimeRow r) => r.Client.Length > 0 ? r.Client : r.Section.Length > 0 ? r.Section : "Без клиента";
 
-        private List<TimeRow> Current() => _all.Where(r => r.Entry.Date >= _start && r.Entry.Date < End)
-            .OrderBy(r => r.Entry.Date).ThenBy(r => r.Entry.CreatedAt).ToList();
+        private List<TimeRow> Current()
+        {
+            var rows = _all.Where(r => r.Entry.Date >= _start && r.Entry.Date < End);
+            if (UseZammad && _zammadRows.TryGetValue(Key, out var extra)) rows = rows.Concat(extra);
+            return rows.OrderBy(r => r.Entry.Date).ThenBy(r => r.Entry.CreatedAt).ToList();
+        }
 
         private string PeriodTitle()
         {
@@ -64,8 +88,15 @@ namespace YellowBlackEditor.Views
             AvgText.Text = workDays == 0 ? "—" : TimeText.Human(total / workDays);
             EmptyText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-            Row MakeRow(TimeRow r, string left, string main) => new(left, main, r.Entry.Comment,
-                string.IsNullOrWhiteSpace(r.Entry.Comment) ? Visibility.Collapsed : Visibility.Visible, TimeText.Human(r.Entry.Minutes));
+            Row MakeRow(TimeRow r, string left, string main)
+            {
+                var ticket = ZammadApi.TicketOf(r.Folder);
+                return new(left, main, r.Entry.Comment,
+                    string.IsNullOrWhiteSpace(r.Entry.Comment) ? Visibility.Collapsed : Visibility.Visible, TimeText.Human(r.Entry.Minutes),
+                    ticket > 0 ? Visibility.Visible : Visibility.Collapsed, ticket,
+                    ticket > 0 && _openTicket != null ? System.Windows.Input.Cursors.Hand : null,
+                    ticket > 0 ? "Заявка из Zammad, списано " + r.Entry.CreatedAt.ToString("dd.MM HH:mm") + ". Нажмите, чтобы открыть" : null);
+            }
 
             List<Group> groups;
             if (_byClient)
@@ -85,7 +116,83 @@ namespace YellowBlackEditor.Views
                     .ToList();
             }
             Groups.ItemsSource = groups;
+            if (UseZammad && !_zammadRows.ContainsKey(Key) && !_zammadFailed.Contains(Key) && _zammadLoading != Key) LoadZammad(Key);
+            ShowZammadState();
             StatusText.Text = "";
+        }
+
+        private void ShowZammadState()
+        {
+            if (_zammad == null) return;
+            if (!UseZammad)
+            {
+                ZammadValue.Text = "не учитывается";
+                ZammadNote.Text = "Поставьте галочку, чтобы добавить время из Zammad";
+            }
+            else if (_zammadRows.TryGetValue(Key, out var rows))
+            {
+                var tickets = rows.Select(r => r.Folder).Distinct().Count();
+                ZammadValue.Text = TimeText.Human(rows.Sum(r => r.Entry.Minutes));
+                ZammadNote.Text = tickets == 0 ? "За этот период время не списано" : $"По {tickets} {(tickets % 10 == 1 && tickets % 100 != 11 ? "заявке" : "заявкам")}, уже в отчёте";
+            }
+            else if (_zammadLoading == Key)
+            {
+                ZammadValue.Text = "…";
+                ZammadNote.Text = "Загружаю из Zammad";
+            }
+            else
+            {
+                ZammadValue.Text = "—";
+                ZammadNote.Text = _zammadNote;
+            }
+        }
+
+        private async void LoadZammad((DateTime From, DateTime To) key)
+        {
+            _zammadCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _zammadCts = cts;
+            _zammadLoading = key;
+            ShowZammadState();
+            try
+            {
+                var rows = await _zammad!(key.From, key.To, cts.Token);
+                _zammadRows[key] = rows;
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (ZammadAuthException)
+            {
+                _zammadFailed.Add(key);
+                _zammadNote = "Нет входа в Zammad. Войдите в разделе «Заявки» и поставьте галочку заново";
+            }
+            catch (Exception ex)
+            {
+                _zammadFailed.Add(key);
+                _zammadNote = "Не загрузилось: " + ex.Message;
+            }
+            finally
+            {
+                if (_zammadLoading == key) _zammadLoading = null;
+            }
+            if (!IsLoaded || _zammadCts != cts) return;
+            Refresh();
+        }
+
+        private void Zammad_Click(object sender, RoutedEventArgs e)
+        {
+            _zammadFailed.Clear();
+            _zammadNote = "";
+            Refresh();
+        }
+
+        private void Row_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is not Row { Ticket: > 0 } row || _openTicket == null) return;
+            WindowState = WindowState.Minimized;
+            _openTicket(row.Ticket);
         }
 
         private void Prev_Click(object sender, RoutedEventArgs e)

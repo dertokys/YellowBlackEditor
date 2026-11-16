@@ -37,7 +37,7 @@ namespace YellowBlackEditor
 
         private int VirtualIndex(NodeViewModel group)
         {
-            var order = new[] { _todayNode, _helpdeskNode, _projectsGroup, _sharedGroup };
+            var order = new[] { _todayNode, _chatNode, _helpdeskNode, _projectsGroup, _sharedGroup };
             var i = 0;
             foreach (var g in order)
             {
@@ -307,7 +307,14 @@ namespace YellowBlackEditor
         private void OpenTimeReport()
         {
             SaveAll(quiet: true);
-            var w = new TimeReportWindow(TimeStore.ScanAll(_workspacePath)) { Owner = this };
+            var w = new TimeReportWindow(TimeStore.ScanAll(_workspacePath), HelpdeskUrl.Length > 0 ? LoadZammadTime : null,
+                OpenZammadTicket, _appSettings.ReportZammad) { Owner = this };
+            w.Closed += (_, _) =>
+            {
+                if (_appSettings.ReportZammad == w.ZammadOn) return;
+                _appSettings.ReportZammad = w.ZammadOn;
+                _appSettings.Save();
+            };
             w.Show();
         }
 

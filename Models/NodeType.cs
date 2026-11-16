@@ -11,6 +11,7 @@ namespace YellowBlackEditor.Models
         SharedGroup,
         SharedProject,
         Today,
-        Helpdesk
+        Helpdesk,
+        Chat
     }
 }

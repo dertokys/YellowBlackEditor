@@ -106,6 +106,7 @@ namespace YellowBlackEditor
             InitShared();
             InitToday();
             InitHelpdesk();
+            InitChat();
             InitUpdates();
             InitCare();
             InitQuickSearch();
@@ -283,6 +284,8 @@ namespace YellowBlackEditor
                 _appSettings = AppSettings.Load();
                 ApplySyncSettings();
                 EnsureHelpdeskNode();
+                EnsureChatNode();
+                ScanChat();
                 UpdateTicketsButton();
                 Status("Настройки сохранены");
             }
@@ -348,9 +351,11 @@ namespace YellowBlackEditor
             _sharedGroup.IsSelected = false;
             _todayNode.IsSelected = false;
             _helpdeskNode.IsSelected = false;
+            _chatNode.IsSelected = false;
             _contentCache.Clear();
             if (!Directory.Exists(_workspacePath)) return;
             EnsureTodayNode();
+            EnsureChatNode();
             EnsureHelpdeskNode();
 
             foreach (var sectionDir in Directory.GetDirectories(_workspacePath).OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
@@ -571,6 +576,7 @@ namespace YellowBlackEditor
             HideShared();
             HideToday();
             HideHelpdesk();
+            HideChat();
             _isDirty = false;
             _clientDirty = false;
 
@@ -579,6 +585,7 @@ namespace YellowBlackEditor
             else if (node?.Type == NodeType.SharedProject) ShowShared(node);
             else if (node?.Type == NodeType.Today) ShowToday();
             else if (node?.Type == NodeType.Helpdesk) ShowHelpdesk();
+            else if (node?.Type == NodeType.Chat) ShowChat();
             else ShowEmpty(node);
 
             UpdateTitle();

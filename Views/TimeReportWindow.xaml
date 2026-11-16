@@ -31,6 +31,7 @@
                     <Border Width="1" Height="22" Background="{DynamicResource BorderBrush1}" Margin="10,0"/>
                     <ToggleButton x:Name="ByDayBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="110" Content="По дням" Click="ByDay_Click"/>
                     <ToggleButton x:Name="ByClientBtn" Style="{DynamicResource AccentToggle}" Height="34" Width="120" Content="По клиентам" Click="ByClient_Click"/>
+
                 </StackPanel>
             </Grid>
         </Border>
@@ -60,6 +61,17 @@
                     <TextBlock x:Name="AvgText" FontSize="22" FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
+            <Border x:Name="ZammadCard" Style="{DynamicResource CardBorder}" Padding="16,10" Margin="0,0,10,10" MinWidth="230" MaxWidth="340">
+                <StackPanel>
+                    <DockPanel>
+                        <CheckBox x:Name="ZammadBtn" DockPanel.Dock="Right" Style="{DynamicResource SettingCheck}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                  Click="Zammad_Click" ToolTip="Учитывать в отчёте время, списанное в «Личных заявках» Zammad"/>
+                        <TextBlock Text="Из Zammad, личные заявки" Style="{DynamicResource FieldLabel}"/>
+                    </DockPanel>
+                    <TextBlock x:Name="ZammadValue" FontSize="22" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="ZammadNote" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
         </WrapPanel>
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -79,7 +91,8 @@
                                     <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="0,4,0,4">
+                                                <Grid Margin="0,4,0,4" Background="Transparent" Cursor="{Binding Cursor}" ToolTip="{Binding Hint}"
+                                                      MouseLeftButtonUp="Row_Click">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="190"/>
                                                         <ColumnDefinition Width="*"/>
@@ -87,7 +100,13 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Text="{Binding Left}" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top"/>
                                                     <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding Main}" TextTrimming="CharacterEllipsis"/>
+                                                        <DockPanel>
+                                                            <Border DockPanel.Dock="Left" Visibility="{Binding TagVisibility}" CornerRadius="4" Padding="6,0" Margin="0,1,8,1"
+                                                                    Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+                                                                <TextBlock Text="Zammad" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Main}" TextTrimming="CharacterEllipsis"/>
+                                                        </DockPanel>
                                                         <TextBlock Text="{Binding Comment}" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap"
                                                                    Visibility="{Binding CommentVisibility}"/>
                                                     </StackPanel>

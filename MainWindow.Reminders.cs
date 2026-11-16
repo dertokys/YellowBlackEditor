@@ -66,6 +66,7 @@ namespace YellowBlackEditor
                 };
                 _tray.BalloonTipClicked += (_, _) =>
                 {
+                    if (TryOpenBalloonChat()) return;
                     if (_lastBalloonIsReminder) BringToFrontAndShowReminders();
                     else if (_balloonTransfer) OpenBalloonTransfer();
                     else if (_balloonToday) OpenBalloonToday();

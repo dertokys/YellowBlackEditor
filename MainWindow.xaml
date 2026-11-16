@@ -220,6 +220,14 @@
                                         <Setter TargetName="IconTb" Property="VerticalAlignment" Value="Top"/>
                                         <Setter TargetName="IconTb" Property="Margin" Value="0,2,0,0"/>
                                     </DataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding Type}" Value="Chat"/>
+                                            <Condition Binding="{Binding HasHint}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter TargetName="HintTb" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="HintTb" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                                    </MultiDataTrigger>
                                     <DataTrigger Binding="{Binding Type}" Value="SharedProject">
                                         <Setter TargetName="HintTb" Property="Visibility" Value="Visible"/>
                                         <Setter TargetName="IconTb" Property="VerticalAlignment" Value="Top"/>
@@ -334,6 +342,7 @@
                 <views:SharedProjectView x:Name="SharedView" Grid.Row="1" Visibility="Collapsed"/>
                 <views:TodayView x:Name="TodayPanel" Grid.Row="1" Visibility="Collapsed"/>
                 <views:HelpdeskView x:Name="HelpdeskPanel" Grid.Row="1" Visibility="Collapsed"/>
+                <views:ChatView x:Name="ChatPanel" Grid.Row="1" Visibility="Collapsed"/>
             </Grid>
         </Grid>
     </DockPanel>
